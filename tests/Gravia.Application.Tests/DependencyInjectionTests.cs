@@ -113,6 +113,7 @@ public sealed class DependencyInjectionTests
     {
         var services = new ServiceCollection();
         services.AddApplicationServices();
+        services.AddSingleton<Gravia.Application.Projects.IProjectStore, Projects.TestProjectStore>();
 
         // Test-only requests keep scaffolding out of the production Application assembly.
         services.AddScoped<TestState>();
