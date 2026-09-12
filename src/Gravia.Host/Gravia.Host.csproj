@@ -11,7 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="../Gravia.Desktop/*.cjs;../Gravia.Desktop/*.html;../Gravia.Desktop/*.css;../Gravia.Desktop/package.json"
+    <Content Include="../Gravia.Desktop/*.cjs;../Gravia.Desktop/package.json"
              Link="Desktop/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <Target Name="RestoreDesktop"
@@ -26,6 +26,19 @@
   </Target>
   <Target Name="PrepareDesktop" BeforeTargets="BeforeBuild" DependsOnTargets="RestoreDesktop"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(SkipDesktopRestore)' != 'true'">
+    <PropertyGroup>
+      <DesktopNpm Condition="$([MSBuild]::IsOSPlatform('Windows'))">npm.cmd</DesktopNpm>
+      <DesktopNpm Condition="'$(DesktopNpm)' == ''">npm</DesktopNpm>
+    </PropertyGroup>
     <Exec WorkingDirectory="$(MSBuildProjectDirectory)/../Gravia.Desktop" Command="node -e &quot;require('electron')&quot;" />
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)/../Gravia.Desktop" Command="$(DesktopNpm) run build" />
+  </Target>
+  <Target Name="IncludeDesktopWebAssets" BeforeTargets="AssignTargetPaths" DependsOnTargets="PrepareDesktop">
+    <ItemGroup>
+      <_DesktopWebAsset Include="$(MSBuildProjectDirectory)/../Gravia.Desktop/dist/**/*" />
+      <Content Include="@(_DesktopWebAsset)"
+               Link="Desktop/wwwroot/%(_DesktopWebAsset.RecursiveDir)%(_DesktopWebAsset.Filename)%(_DesktopWebAsset.Extension)"
+               CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
   </Target>
 </Project>

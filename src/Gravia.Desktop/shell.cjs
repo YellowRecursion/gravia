@@ -25,8 +25,11 @@ async function runDesktop({ app, BrowserWindow, session, Menu }) {
       const newline = pending.indexOf('\n');
       if (newline < 0) return;
       received = true;
-      try { resolve(parseBootstrap(pending.slice(0, newline))); }
-      catch (error) { reject(error); }
+      try {
+        resolve(parseBootstrap(pending.slice(0, newline)));
+      } catch (error) {
+        reject(error);
+      }
       pending = '';
     });
   });
@@ -37,14 +40,22 @@ async function runDesktop({ app, BrowserWindow, session, Menu }) {
   };
   control.on('end', stop);
   control.on('error', stop);
-  const startupTimeout = setTimeout(() => rejectBootstrap(new Error('Host startup timed out.')), 15000);
+  const startupTimeout = setTimeout(
+    () => rejectBootstrap(new Error('Host startup timed out.')),
+    15000,
+  );
   let configuration;
-  try { configuration = await bootstrap; }
-  finally { clearTimeout(startupTimeout); }
+  try {
+    configuration = await bootstrap;
+  } finally {
+    clearTimeout(startupTimeout);
+  }
 
   await app.whenReady();
   Menu.setApplicationMenu(null);
-  session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
+  session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) =>
+    callback(false),
+  );
   session.defaultSession.setPermissionCheckHandler(() => false);
   const window = new BrowserWindow({
     title: 'Gravia Lab',
@@ -54,7 +65,7 @@ async function runDesktop({ app, BrowserWindow, session, Menu }) {
     minHeight: 480,
     show: false,
     backgroundColor: '#202124',
-    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
+    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event) => event.preventDefault());

@@ -1,6 +1,7 @@
 using System.Net;
 using Gravia.Infrastructure.Logging;
 using Gravia.Host.Errors;
+using Microsoft.Extensions.FileProviders;
 
 namespace Gravia.Host.Desktop;
 
@@ -28,13 +29,23 @@ public static class DesktopHost
         app.UseMiddleware<HttpExceptionMiddleware>();
         app.Use(async (context, next) =>
         {
-            context.Response.Headers.ContentSecurityPolicy = "default-src 'none'; style-src 'self'; frame-ancestors 'none'";
+            // Ant/React Flow use dynamic styles and inline positioning. Scripts stay same-origin only.
+            context.Response.Headers.ContentSecurityPolicy =
+                "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+                "connect-src 'self'; img-src 'self' data:; font-src 'self'; " +
+                "base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
             context.Response.Headers.XContentTypeOptions = "nosniff";
             await next(context);
         });
-        // Only the two shell assets are served. No project operations or filesystem API yet.
-        app.MapGet("/", () => Results.File(Path.Combine(desktop.AppDirectory, "index.html"), "text/html"));
-        app.MapGet("/shell.css", () => Results.File(Path.Combine(desktop.AppDirectory, "shell.css"), "text/css"));
+        // Only the compiled renderer is public, never the Electron/npm/source directory.
+        var webRoot = Path.Combine(desktop.AppDirectory, "wwwroot");
+        if (Directory.Exists(webRoot))
+        {
+            var files = new PhysicalFileProvider(webRoot);
+            app.Lifetime.ApplicationStopped.Register(files.Dispose);
+            app.UseStaticFiles(new StaticFileOptions { FileProvider = files });
+        }
+        app.MapGet("/", () => Results.File(Path.Combine(webRoot, "index.html"), "text/html"));
         return app;
     }
 

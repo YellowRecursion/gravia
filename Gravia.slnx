@@ -18,7 +18,11 @@
     <File Path="src/Gravia.Desktop/main.cjs" />
     <File Path="src/Gravia.Desktop/shell.cjs" />
     <File Path="src/Gravia.Desktop/bootstrap.cjs" />
-    <File Path="src/Gravia.Desktop/index.html" />
-    <File Path="src/Gravia.Desktop/shell.css" />
+    <File Path="src/Gravia.Desktop/vite.config.ts" />
+    <File Path="src/Gravia.Desktop/orval.config.ts" />
+    <File Path="src/Gravia.Desktop/eslint.config.mjs" />
+    <File Path="src/Gravia.Desktop/renderer/index.html" />
+    <File Path="src/Gravia.Desktop/renderer/main.tsx" />
+    <File Path="src/Gravia.Desktop/renderer/App.tsx" />
   </Folder>
 </Solution>

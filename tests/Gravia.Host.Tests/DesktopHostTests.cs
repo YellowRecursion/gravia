@@ -28,11 +28,18 @@ public sealed class DesktopHostTests
             using var response = await client.GetAsync("/");
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
-            Assert.Contains("<body></body>", await response.Content.ReadAsStringAsync());
+            var html = await response.Content.ReadAsStringAsync();
+            Assert.Contains("<div id=\"root\"></div>", html);
             Assert.Contains("default-src 'none'", response.Headers.GetValues("Content-Security-Policy").Single());
-            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/shell.css")).StatusCode);
+            var assets = System.Text.RegularExpressions.Regex.Matches(html, "(?:src|href)=\"(/assets/[^\"]+)\"");
+            Assert.True(assets.Count >= 2, "The page must reference compiled JavaScript and CSS.");
+            foreach (System.Text.RegularExpressions.Match asset in assets)
+                Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(asset.Groups[1].Value)).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/package.json")).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/appsettings.json")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/shell.cjs")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/renderer/main.tsx")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/assets/missing.js")).StatusCode);
         }
         finally { await app.StopAsync(); }
     }

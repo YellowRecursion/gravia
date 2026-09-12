@@ -2,8 +2,16 @@
 function parseBootstrap(line) {
   const value = JSON.parse(line);
   const url = new URL(value.backendUrl);
-  if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' ||
-      !url.port || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+  if (
+    url.protocol !== 'http:' ||
+    url.hostname !== '127.0.0.1' ||
+    !url.port ||
+    url.username ||
+    url.password ||
+    url.pathname !== '/' ||
+    url.search ||
+    url.hash
+  ) {
     throw new Error('Expected a loopback backend URL with an explicit port.');
   }
   return { backendUrl: url.href };

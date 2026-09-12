@@ -22,7 +22,9 @@ DesktopHostTests запускает настоящий локальный HTTP �
 loopback-порт, пустая оболочка, отсутствие доступа к исходникам/конфигурации и
 ProblemDetails для доменных ошибок, валидации и аномалий.
 
-Для backend CI без установки Electron можно добавить `-p:SkipDesktopRestore=true`.
+Для backend CI можно заранее выполнить `npm ci` и `npm run build` в Gravia.Desktop,
+затем добавить `-p:SkipDesktopRestore=true`: .NET не запускает npm и не готовит runtime.
+HTTP-тесты требуют собранные веб-ресурсы, Electron executable им не нужен.
 Проверки настоящих окон запускаются отдельно через `npm run smoke` в
 `src/Gravia.Desktop`; условия и сценарии — в [README Desktop](../src/Gravia.Desktop/README.md).
 
