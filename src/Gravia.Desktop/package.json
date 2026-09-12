@@ -1,0 +1,14 @@
+{
+  "name": "gravia-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal Electron shell for Gravia. Frontend architecture is not selected yet.",
+  "main": "main.cjs",
+  "scripts": {
+    "setup": "node -e \"require('electron')\"",
+    "smoke": "node tests/desktop-smoke.cjs",
+    "test": "node --test tests/*.test.cjs"
+  },
+  "engines": { "node": ">=22.12.0" },
+  "devDependencies": { "electron": "44.3.0" }
+}

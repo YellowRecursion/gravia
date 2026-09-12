@@ -1,10 +1,19 @@
 # Архитектура Gravia: предложение
 
-Дата: 12 сентября 2026 года. **Статус: архитектура ниже остаётся предложением; по прямому запросу владельца создан начальный каркас из четырёх проектов.** В solution добавлены `Gravia.Domain`, `Gravia.Application`, `Gravia.Infrastructure`, `Gravia.Host` и отдельный xUnit-проект для каждого. Все используют .NET 10; Host запускает Generic Host без HTTP API. Подключены MediatR и FluentValidation, проверены регистрация, pipeline и жизненный цикл Host. Предметный код пока не реализован. `Gravia.Execution` не создавался; его выделение остаётся предложением, а не принятым решением.
+Дата: 12 сентября 2026 года. **Статус: общая архитектура ниже остаётся предложением; реализованные и согласованные части отмечены отдельно.** В solution добавлены `Gravia.Domain`, `Gravia.Application`, `Gravia.Infrastructure`, `Gravia.Host` и отдельный xUnit-проект для каждого на .NET 10. Host теперь запускает локальный HTTP сервер и пустую Electron-оболочку `Gravia.Desktop` (npm-проект). Подключены MediatR, FluentValidation, журнал и обработка ошибок. Предметные сценарии пока не реализованы. `Gravia.Execution` не создавался; его выделение остаётся предложением, а не принятым решением.
 
 Текущие ссылки каркаса: `Application → Domain`, `Infrastructure → Domain, Application`, `Host → Application, Infrastructure`; у Domain ссылок на другие проекты нет. Отсутствие Execution пока не означает переноса его предлагаемых обязанностей в другой слой.
 
 Далее — краткая карта предлагаемой реализации. Сценарии, альтернативы, источники, устройство полей, плагины, жизненный цикл и критерии проверки — в [полном разборе](../researches/Архитектура%20Gravia%20и%20границы%20проектов.md).
+
+## Реализованная пустая оболочка
+
+По прямому запросу владельца Run у Gravia.Host открывает пустой Electron без первого
+экрана. React, TypeScript, Vite и UI-библиотеки не установлены; архитектура фронтенда
+будет обсуждаться отдельно. Host владеет процессом Electron, передаёт реальный адрес
+локального HTTP сервера после запуска. Оба компонента завершаются совместно;
+подробности и команды — [README Desktop](../src/Gravia.Desktop/README.md).
+Это не начало реализации пользовательского проекта или плагинов.
 
 ## Доменные ошибки и клиенты
 
@@ -19,14 +28,14 @@ HTTP-статусов и зависимостей от транспорта в D
 
 - `Application/DependencyInjection.cs`: `AddApplicationServices()` регистрирует обработчики MediatR и публичные валидаторы FluentValidation из сборки Application, а также `ValidationBehavior<,>`.
 - `Infrastructure/DependencyInjection.cs`: `AddInfrastructureServices()` подключает заменяемый журнал в памяти и ILoggerProvider.
-- `Host/DependencyInjection.cs`: `AddHostServices()` объединяет регистрации Application и Infrastructure. `Program` создаёт Generic Host, вызывает эту регистрацию и запускает его до остановки (например, Ctrl+C).
+- `Host/DependencyInjection.cs`: `AddHostServices()` объединяет регистрации Application и Infrastructure. `Program` через DesktopHost создаёт WebApplication с этими регистрациями; Host слушает loopback и управляет Electron.
 - Методы расширяют `IServiceCollection`: регистрация внутренних слоёв не требует конфигурации Host. У Domain нет DI-файла и зависимостей на MediatR или FluentValidation.
 
 MediatR закреплён на **12.5.0** после обсуждения с владельцем, а не на новой 14.x: [лицензия выбранной версии — Apache-2.0](https://github.com/jbogard/MediatR/blob/v12.5.0/LICENSE). FluentValidation и его DI-расширение — **12.1.1**, [стабильный выпуск на дату подключения](https://www.nuget.org/packages/FluentValidation.DependencyInjectionExtensions/12.1.1). Обновление MediatR на новую основную версию не считается автоматическим решением.
 
 Валидаторы scoped и запускаются через `ValidateAsync` последовательно, поскольку могут разделять scoped-зависимости, не поддерживающие параллельное использование. Ошибки всех валидаторов собираются в `ValidationException`; при ошибке или отмене обработчик не запускается. Запросы без валидаторов передаются обработчику. Предметные инварианты остаются в Domain. Правила конкретных команд пока не созданы.
 
-Логирование предоставляет Generic Host; отдельные logging/performance behaviors не добавлены. Pipeline не подавляет исключения обработчиков. В Host зарегистрирован ExceptionHandler с общей классификацией ошибок; HostProcess подключён в Main как внешняя граница awaited-жизненного цикла приложения с bootstrap-диагностикой. HTTP/MCP-адаптеры не реализованы. Границы и ограничения — в [errors.md](errors.md), проверки — в [tests/README.md](../tests/README.md).
+Логирование предоставляет Generic Host; отдельные logging/performance behaviors не добавлены. Pipeline не подавляет исключения обработчиков. В Host зарегистрирован ExceptionHandler с общей классификацией ошибок; HostProcess подключён в Main как внешняя граница awaited-жизненного цикла приложения с bootstrap-диагностикой. HTTP middleware переводит ошибки в ProblemDetails; MCP-адаптера нет. Границы и ограничения — в [errors.md](errors.md), проверки — в [tests/README.md](../tests/README.md).
 
 По последним указаниям владельца реализован [заменяемый журнал в памяти](diagnostics.md): ILogJournal/DTO в Application, ограниченный буфер и ILoggerProvider в Infrastructure, регистрация/настройки в Host. Файлов нет; механизм не знает о моделировании/оптимизации. Актуальные проблемы схемы, вычислительные итоги, UI и SDK остаются отдельными будущими частями.
 
