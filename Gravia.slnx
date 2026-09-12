@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Gravia.Domain/Gravia.Domain.csproj" />
+    <Project Path="src/Gravia.Application/Gravia.Application.csproj" />
+    <Project Path="src/Gravia.Infrastructure/Gravia.Infrastructure.csproj" />
+    <Project Path="src/Gravia.Host/Gravia.Host.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Gravia.Domain.Tests/Gravia.Domain.Tests.csproj" />
+    <Project Path="tests/Gravia.Application.Tests/Gravia.Application.Tests.csproj" />
+    <Project Path="tests/Gravia.Infrastructure.Tests/Gravia.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Gravia.Host.Tests/Gravia.Host.Tests.csproj" />
+  </Folder>
+</Solution>

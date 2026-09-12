@@ -1,0 +1,298 @@
+{
+  "runtime": "10.0.10",
+  "framework": ".NET 10.0.10",
+  "unitsNet": "5.75.1",
+  "engineeringUnits": "2.2.143",
+  "tieredCompilation": "0",
+  "failures": 1,
+  "checks": [
+    {
+      "name": "U01: 3.6 tonne/h -\u003E kg/s",
+      "pass": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "U02: 32 F -\u003E K",
+      "pass": true,
+      "actual": 273.15,
+      "expected": 273.15
+    },
+    {
+      "name": "U02d: delta18 F -\u003E deltaK",
+      "pass": true,
+      "actual": 10,
+      "expected": 10
+    },
+    {
+      "name": "U05: .82 g/cm3 -\u003E kg/m3",
+      "pass": true,
+      "actual": 819.9999999999999,
+      "expected": 820
+    },
+    {
+      "name": "U22a: 4 cSt -\u003E m2/s",
+      "pass": true,
+      "actual": 4.000000000000001E-06,
+      "expected": 4E-06
+    },
+    {
+      "name": "U22b: 3.2 cP -\u003E Pa.s",
+      "pass": true,
+      "actual": 0.0032,
+      "expected": 0.0032
+    },
+    {
+      "name": "U25: 500 mg/kg -\u003E percent (mass basis externally asserted)",
+      "pass": true,
+      "actual": 0.05,
+      "expected": 0.05
+    },
+    {
+      "name": "U dimension mismatch rejected",
+      "pass": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "E02: 32 F -\u003E K",
+      "pass": true,
+      "actual": 273.15,
+      "expected": 273.15
+    },
+    {
+      "name": "E02d: OBSOLETE delta18 F -\u003E deltaK",
+      "pass": false,
+      "actual": 0,
+      "expected": 10
+    },
+    {
+      "name": "E05: .82 g/cm3 -\u003E kg/m3",
+      "pass": true,
+      "actual": 820,
+      "expected": 820
+    },
+    {
+      "name": "E25: 500 mg/kg -\u003E percent (mass basis externally asserted)",
+      "pass": true,
+      "actual": 0.05,
+      "expected": 0.05
+    },
+    {
+      "name": "E compound mass/volume -\u003E density",
+      "pass": true,
+      "actual": 800,
+      "expected": 800
+    },
+    {
+      "name": "E custom mass unit: 2 crates of25kg",
+      "pass": true,
+      "actual": 50,
+      "expected": 50
+    },
+    {
+      "name": "E custom compound unit kg/(m3.s)",
+      "pass": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "C03: 2barg \u002B explicit1.01325bar reference",
+      "pass": true,
+      "actual": 3.01325,
+      "expected": 3.01325
+    },
+    {
+      "name": "C04: 10m3/h density800 -\u003E tonne/h",
+      "pass": true,
+      "actual": 8,
+      "expected": 8
+    },
+    {
+      "name": "C04: same flow new density700 -\u003E tonne/h",
+      "pass": true,
+      "actual": 7,
+      "expected": 7
+    },
+    {
+      "name": "C07: API from SG60/60=.8",
+      "pass": true,
+      "actual": 45.375,
+      "expected": 45.375
+    },
+    {
+      "name": "C07: API is not affine (midpoint discrepancy)",
+      "pass": true,
+      "actual": 1.9652777777777715,
+      "expected": 1.96527777777777
+    },
+    {
+      "name": "C08: gas standardT273.15 -\u003E293.15, sameP,Z",
+      "pass": true,
+      "actual": 107.32198425773385,
+      "expected": 107.32198425773385
+    },
+    {
+      "name": "C10: dryH2 .9, wetH2O .1",
+      "pass": true,
+      "actual": 0.81,
+      "expected": 0.81
+    },
+    {
+      "name": "C12: equal massH2/N2, illustrative molar masses2/28",
+      "pass": true,
+      "actual": 0.9333333333333333,
+      "expected": 0.9333333333333333
+    },
+    {
+      "name": "C22: 4cSt density800 -\u003E mPa.s",
+      "pass": true,
+      "actual": 3.1999999999999997,
+      "expected": 3.2
+    },
+    {
+      "name": "C33: 240tonnes over24h, no replenishment",
+      "pass": true,
+      "actual": 10,
+      "expected": 10
+    },
+    {
+      "name": "Prepared identity excludes conversion",
+      "pass": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "Prepared density .82 -\u003E820",
+      "pass": true,
+      "actual": 820,
+      "expected": 820
+    },
+    {
+      "name": "Prepared Celsius20 -\u003EKelvin",
+      "pass": true,
+      "actual": 293.15,
+      "expected": 293.15
+    },
+    {
+      "name": "Benchmark output: copy baseline (identity transport)",
+      "pass": true,
+      "actual": 0.7998999999999999,
+      "expected": 0.7998999999999999
+    },
+    {
+      "name": "Benchmark output: prepared affine double loop",
+      "pass": true,
+      "actual": 799.9,
+      "expected": 799.9
+    },
+    {
+      "name": "Benchmark output: UnitsNet typed density per value",
+      "pass": true,
+      "actual": 799.9,
+      "expected": 799.9
+    },
+    {
+      "name": "Benchmark output: UnitsNet dynamic enum conversion per value",
+      "pass": true,
+      "actual": 799.9,
+      "expected": 799.9
+    },
+    {
+      "name": "Benchmark output: EngineeringUnits typed density per value",
+      "pass": true,
+      "actual": 799.9,
+      "expected": 799.9
+    },
+    {
+      "name": "2m values result",
+      "pass": true,
+      "actual": 799.9,
+      "expected": 799.9
+    }
+  ],
+  "observations": [
+    {
+      "name": "U Ratio has no mass/mole semantic discriminator",
+      "result": 0.5
+    },
+    {
+      "name": "E mass/mass -\u003E Ratio",
+      "result": 50
+    },
+    {
+      "name": "E mol/mol -\u003E same Ratio",
+      "result": 50
+    },
+    {
+      "name": "E parse composite",
+      "result": "1 kg/(s\u00B7m\u00B3)"
+    },
+    {
+      "name": "E parse Nm3/h without conditions",
+      "error": "FormatException: Could not parse quantity literal starting at: \u0027m3/h\u0027"
+    },
+    {
+      "name": "U density condition properties",
+      "result": []
+    },
+    {
+      "name": "E custom symbol collision: same label different scales",
+      "result": [
+        25,
+        30
+      ]
+    }
+  ],
+  "benchmarks": [
+    {
+      "name": "copy baseline (identity transport)",
+      "values": 100000,
+      "medianMs": 0.028,
+      "minMs": 0.0279,
+      "maxMs": 0.0303,
+      "medianAllocatedBytes": 0
+    },
+    {
+      "name": "prepared affine double loop",
+      "values": 100000,
+      "medianMs": 0.0424,
+      "minMs": 0.0424,
+      "maxMs": 0.0631,
+      "medianAllocatedBytes": 0
+    },
+    {
+      "name": "UnitsNet typed density per value",
+      "values": 100000,
+      "medianMs": 1.8111,
+      "minMs": 1.7919,
+      "maxMs": 1.8654,
+      "medianAllocatedBytes": 0
+    },
+    {
+      "name": "UnitsNet dynamic enum conversion per value",
+      "values": 100000,
+      "medianMs": 4.556,
+      "minMs": 4.3892,
+      "maxMs": 8.5986,
+      "medianAllocatedBytes": 8000000
+    },
+    {
+      "name": "EngineeringUnits typed density per value",
+      "values": 100000,
+      "medianMs": 86.0008,
+      "minMs": 84.8013,
+      "maxMs": 87.35,
+      "medianAllocatedBytes": 10400000
+    },
+    {
+      "name": "prepared: 100000 candidates x20 fields",
+      "values": 2000000,
+      "medianMs": 1.8852,
+      "minMs": 1.8482,
+      "maxMs": 2.1808,
+      "medianAllocatedBytes": 0
+    }
+  ],
+  "limitations": "Isolated conversion; no model, optimizer, IPC, scheduler, concurrency or semantic registry. Known affine density. Warm loops, preallocated arrays. Seven samples in one process, not BenchmarkDotNet."
+}

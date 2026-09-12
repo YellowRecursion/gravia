@@ -1,0 +1,65 @@
+# Normalize text in Git and use LF across platforms.
+* text=auto eol=lf
+
+# Windows command scripts require CRLF on checkout.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Explicit text types, including files that may be new or empty.
+*.cs text diff=csharp
+*.csproj text
+*.sln text
+*.slnx text
+*.props text
+*.targets text
+*.resx text
+*.py text
+*.ps1 text
+*.sh text
+*.js text
+*.mjs text
+*.cjs text
+*.ts text
+*.tsx text
+*.jsx text
+*.json text
+*.yaml text
+*.yml text
+*.toml text
+*.xml text
+*.html text
+*.css text
+*.scss text
+*.md text
+*.svg text
+*.csv text
+*.tsv text
+
+# Binary assets must never undergo line-ending conversion or text merging.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.zip binary
+*.7z binary
+*.gz binary
+*.dll binary
+*.exe binary
+*.pdb binary
+*.nupkg binary
+*.snupkg binary
+*.npy binary
+*.npz binary
+*.h5 binary
+*.hdf5 binary
+*.onnx binary
+*.parquet binary
+*.xlsx binary
+*.docx binary
+*.pptx binary

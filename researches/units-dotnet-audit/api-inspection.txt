@@ -1,0 +1,606 @@
+UnitsNet, Version=5.0.0.0, Culture=neutral, PublicKeyToken=f8601875a1f041da
+UnitsNet.Density struct
+  Double get_GramsPerCubicCentimeter()
+  Double get_GramsPerCubicFoot()
+  Double get_GramsPerCubicInch()
+  Double get_GramsPerCubicMeter()
+  Double get_GramsPerCubicMillimeter()
+  Double get_GramsPerDeciLiter()
+  Double get_GramsPerLiter()
+  Double get_GramsPerMilliliter()
+  Double get_KilogramsPerCubicCentimeter()
+  Double get_KilogramsPerCubicMeter()
+  Double get_KilogramsPerCubicMillimeter()
+  Double get_KilogramsPerLiter()
+  Double get_KilopoundsPerCubicFoot()
+  Double get_KilopoundsPerCubicInch()
+  Double get_KilopoundsPerCubicYard()
+  Double get_MicrogramsPerCubicMeter()
+  Double get_MilligramsPerCubicMeter()
+  Double get_PoundsPerCubicCentimeter()
+  Double get_PoundsPerCubicFoot()
+  Double get_PoundsPerCubicInch()
+  Double get_PoundsPerCubicMeter()
+  Double get_PoundsPerCubicMillimeter()
+  Double get_PoundsPerCubicYard()
+  Double get_SlugsPerCubicCentimeter()
+  Double get_SlugsPerCubicFoot()
+  Double get_SlugsPerCubicInch()
+  Double get_SlugsPerCubicMeter()
+  Double get_SlugsPerCubicMillimeter()
+  Double get_TonnesPerCubicCentimeter()
+  Double get_TonnesPerCubicFoot()
+  Double get_TonnesPerCubicInch()
+  Double get_TonnesPerCubicMeter()
+  Double get_TonnesPerCubicMillimeter()
+  UnitsNet.Density FromGramsPerCubicCentimeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromGramsPerCubicFoot(UnitsNet.QuantityValue)
+  UnitsNet.Density FromGramsPerCubicInch(UnitsNet.QuantityValue)
+  UnitsNet.Density FromGramsPerCubicMeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromGramsPerCubicMillimeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromGramsPerDeciLiter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromGramsPerLiter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromGramsPerMilliliter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromKilogramsPerCubicCentimeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromKilogramsPerCubicMeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromKilogramsPerCubicMillimeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromKilogramsPerLiter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromKilopoundsPerCubicFoot(UnitsNet.QuantityValue)
+  UnitsNet.Density FromKilopoundsPerCubicInch(UnitsNet.QuantityValue)
+  UnitsNet.Density FromKilopoundsPerCubicYard(UnitsNet.QuantityValue)
+  UnitsNet.Density FromMicrogramsPerCubicMeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromMilligramsPerCubicMeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromPoundsPerCubicCentimeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromPoundsPerCubicFoot(UnitsNet.QuantityValue)
+  UnitsNet.Density FromPoundsPerCubicInch(UnitsNet.QuantityValue)
+  UnitsNet.Density FromPoundsPerCubicMeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromPoundsPerCubicMillimeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromPoundsPerCubicYard(UnitsNet.QuantityValue)
+  UnitsNet.Density FromSlugsPerCubicCentimeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromSlugsPerCubicFoot(UnitsNet.QuantityValue)
+  UnitsNet.Density FromSlugsPerCubicInch(UnitsNet.QuantityValue)
+  UnitsNet.Density FromSlugsPerCubicMeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromSlugsPerCubicMillimeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromTonnesPerCubicCentimeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromTonnesPerCubicFoot(UnitsNet.QuantityValue)
+  UnitsNet.Density FromTonnesPerCubicInch(UnitsNet.QuantityValue)
+  UnitsNet.Density FromTonnesPerCubicMeter(UnitsNet.QuantityValue)
+  UnitsNet.Density FromTonnesPerCubicMillimeter(UnitsNet.QuantityValue)
+  Double As(UnitsNet.Units.DensityUnit)
+  Double As(UnitsNet.UnitSystem)
+  Void .ctor(Double, UnitsNet.Units.DensityUnit)
+  Void .ctor(Double, UnitsNet.UnitSystem)
+  Double GramsPerCubicCentimeter
+  Double GramsPerCubicFoot
+  Double GramsPerCubicInch
+  Double GramsPerCubicMeter
+  Double GramsPerCubicMillimeter
+  Double GramsPerDeciLiter
+  Double GramsPerLiter
+  Double GramsPerMilliliter
+  Double KilogramsPerCubicCentimeter
+  Double KilogramsPerCubicMeter
+  Double KilogramsPerCubicMillimeter
+  Double KilogramsPerLiter
+  Double KilopoundsPerCubicFoot
+  Double KilopoundsPerCubicInch
+  Double KilopoundsPerCubicYard
+  Double MicrogramsPerCubicMeter
+  Double MilligramsPerCubicMeter
+  Double PoundsPerCubicCentimeter
+  Double PoundsPerCubicFoot
+  Double PoundsPerCubicInch
+  Double PoundsPerCubicMeter
+  Double PoundsPerCubicMillimeter
+  Double PoundsPerCubicYard
+  Double SlugsPerCubicCentimeter
+  Double SlugsPerCubicFoot
+  Double SlugsPerCubicInch
+  Double SlugsPerCubicMeter
+  Double SlugsPerCubicMillimeter
+  Double TonnesPerCubicCentimeter
+  Double TonnesPerCubicFoot
+  Double TonnesPerCubicInch
+  Double TonnesPerCubicMeter
+  Double TonnesPerCubicMillimeter
+UnitsNet.DynamicViscosity struct
+  Double As(UnitsNet.Units.DynamicViscosityUnit)
+  Double As(UnitsNet.UnitSystem)
+  Void .ctor(Double, UnitsNet.Units.DynamicViscosityUnit)
+  Void .ctor(Double, UnitsNet.UnitSystem)
+UnitsNet.KinematicViscosity struct
+  Double As(UnitsNet.Units.KinematicViscosityUnit)
+  Double As(UnitsNet.UnitSystem)
+  Void .ctor(Double, UnitsNet.Units.KinematicViscosityUnit)
+  Void .ctor(Double, UnitsNet.UnitSystem)
+UnitsNet.MassFlow struct
+  Double get_GramsPerDay()
+  Double get_GramsPerHour()
+  Double get_GramsPerSecond()
+  Double get_KilogramsPerDay()
+  Double get_KilogramsPerHour()
+  Double get_KilogramsPerMinute()
+  Double get_KilogramsPerSecond()
+  UnitsNet.MassFlow FromGramsPerDay(UnitsNet.QuantityValue)
+  UnitsNet.MassFlow FromGramsPerHour(UnitsNet.QuantityValue)
+  UnitsNet.MassFlow FromGramsPerSecond(UnitsNet.QuantityValue)
+  UnitsNet.MassFlow FromKilogramsPerDay(UnitsNet.QuantityValue)
+  UnitsNet.MassFlow FromKilogramsPerHour(UnitsNet.QuantityValue)
+  UnitsNet.MassFlow FromKilogramsPerMinute(UnitsNet.QuantityValue)
+  UnitsNet.MassFlow FromKilogramsPerSecond(UnitsNet.QuantityValue)
+  Double As(UnitsNet.Units.MassFlowUnit)
+  Double As(UnitsNet.UnitSystem)
+  Void .ctor(Double, UnitsNet.Units.MassFlowUnit)
+  Void .ctor(Double, UnitsNet.UnitSystem)
+  Double GramsPerDay
+  Double GramsPerHour
+  Double GramsPerSecond
+  Double KilogramsPerDay
+  Double KilogramsPerHour
+  Double KilogramsPerMinute
+  Double KilogramsPerSecond
+UnitsNet.Temperature struct
+  Double get_DegreesCelsius()
+  Double get_DegreesFahrenheit()
+  Double get_Kelvins()
+  Double get_MillidegreesCelsius()
+  UnitsNet.Temperature FromDegreesCelsius(UnitsNet.QuantityValue)
+  UnitsNet.Temperature FromDegreesFahrenheit(UnitsNet.QuantityValue)
+  UnitsNet.Temperature FromKelvins(UnitsNet.QuantityValue)
+  UnitsNet.Temperature FromMillidegreesCelsius(UnitsNet.QuantityValue)
+  Double As(UnitsNet.Units.TemperatureUnit)
+  Double As(UnitsNet.UnitSystem)
+  Void .ctor(Double, UnitsNet.Units.TemperatureUnit)
+  Void .ctor(Double, UnitsNet.UnitSystem)
+  Double DegreesCelsius
+  Double DegreesFahrenheit
+  Double Kelvins
+  Double MillidegreesCelsius
+UnitsNet.TemperatureDelta struct
+  Double get_DegreesCelsius()
+  Double get_DegreesFahrenheit()
+  Double get_Kelvins()
+  Double get_MillidegreesCelsius()
+  UnitsNet.TemperatureDelta FromDegreesCelsius(UnitsNet.QuantityValue)
+  UnitsNet.TemperatureDelta FromDegreesFahrenheit(UnitsNet.QuantityValue)
+  UnitsNet.TemperatureDelta FromKelvins(UnitsNet.QuantityValue)
+  UnitsNet.TemperatureDelta FromMillidegreesCelsius(UnitsNet.QuantityValue)
+  Double As(UnitsNet.Units.TemperatureDeltaUnit)
+  Double As(UnitsNet.UnitSystem)
+  Void .ctor(Double, UnitsNet.Units.TemperatureDeltaUnit)
+  Void .ctor(Double, UnitsNet.UnitSystem)
+  Double DegreesCelsius
+  Double DegreesFahrenheit
+  Double Kelvins
+  Double MillidegreesCelsius
+UnitsNet.Ratio struct
+  Double get_PartsPerBillion()
+  Double get_PartsPerMillion()
+  Double get_PartsPerThousand()
+  Double get_PartsPerTrillion()
+  Double get_Percent()
+  UnitsNet.Ratio FromPartsPerBillion(UnitsNet.QuantityValue)
+  UnitsNet.Ratio FromPartsPerMillion(UnitsNet.QuantityValue)
+  UnitsNet.Ratio FromPartsPerThousand(UnitsNet.QuantityValue)
+  UnitsNet.Ratio FromPartsPerTrillion(UnitsNet.QuantityValue)
+  UnitsNet.Ratio FromPercent(UnitsNet.QuantityValue)
+  Double As(UnitsNet.Units.RatioUnit)
+  Double As(UnitsNet.UnitSystem)
+  Void .ctor(Double, UnitsNet.Units.RatioUnit)
+  Void .ctor(Double, UnitsNet.UnitSystem)
+  Double PartsPerBillion
+  Double PartsPerMillion
+  Double PartsPerThousand
+  Double PartsPerTrillion
+  Double Percent
+UnitsNet.UnitSystem class
+  Void .ctor(UnitsNet.BaseUnits)
+EngineeringUnits, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+EngineeringUnits.BaseUnit class
+  System.Decimal get_AsSI()
+  Void .ctor()
+  Void .ctor(Fractions.Fraction, EngineeringUnits.UnitSystem)
+  Void .ctor(EngineeringUnits.DecimalSafe, EngineeringUnits.UnitSystem)
+  Void .ctor(System.Decimal, EngineeringUnits.UnitSystem)
+  Void .ctor(Double, EngineeringUnits.UnitSystem)
+  Void .ctor(Int32, EngineeringUnits.UnitSystem)
+  Void .ctor(EngineeringUnits.UnknownUnit, EngineeringUnits.UnitSystem)
+  Void .ctor(System.Decimal)
+  Void .ctor(Double)
+  Void .ctor(Int32)
+  System.Decimal AsSI
+EngineeringUnits.TemperatureDelta class
+  Double As(EngineeringUnits.Units.TemperatureUnit)
+  EngineeringUnits.TemperatureDelta FromDegreesCelsius(Double)
+  EngineeringUnits.TemperatureDelta FromDegreesFahrenheit(Double)
+  EngineeringUnits.TemperatureDelta FromKelvins(Double)
+  EngineeringUnits.TemperatureDelta FromMillidegreesCelsius(Double)
+  Double get_DegreesCelsius()
+  Double get_DegreesFahrenheit()
+  Double get_Kelvins()
+  Void .ctor()
+  Void .ctor(Int32, EngineeringUnits.Units.TemperatureUnit)
+  Void .ctor(Double, EngineeringUnits.Units.TemperatureUnit)
+  Void .ctor(System.Decimal, EngineeringUnits.Units.TemperatureUnit)
+  Double DegreesCelsius
+  Double DegreesFahrenheit
+  Double Kelvins
+  Double MillidegreesCelsius
+EngineeringUnits.Temperature class
+  Double As(EngineeringUnits.Units.TemperatureUnit)
+  Double get_Kelvin()
+  Double get_DegreeCelsius()
+  Double get_DegreeFahrenheit()
+  Double get_Kelvins()
+  Double get_DegreesCelsius()
+  Double get_DegreesFahrenheit()
+  EngineeringUnits.Temperature FromKelvin(System.Nullable`1[System.Double])
+  EngineeringUnits.Temperature FromDegreeCelsius(System.Nullable`1[System.Double])
+  EngineeringUnits.Temperature FromDegreeFahrenheit(System.Nullable`1[System.Double])
+  EngineeringUnits.Temperature FromKelvins(System.Nullable`1[System.Double])
+  EngineeringUnits.Temperature FromDegreesCelsius(System.Nullable`1[System.Double])
+  EngineeringUnits.Temperature FromDegreesFahrenheit(System.Nullable`1[System.Double])
+  Void .ctor()
+  Void .ctor(Fractions.Fraction, EngineeringUnits.Units.TemperatureUnit)
+  Void .ctor(System.Decimal, EngineeringUnits.Units.TemperatureUnit)
+  Void .ctor(Double, EngineeringUnits.Units.TemperatureUnit)
+  Void .ctor(Int32, EngineeringUnits.Units.TemperatureUnit)
+  Void .ctor(EngineeringUnits.UnknownUnit)
+  Double Kelvin
+  Double DegreeCelsius
+  Double DegreeFahrenheit
+  Double Kelvins
+  Double DegreesCelsius
+  Double DegreesFahrenheit
+EngineeringUnits.Density class
+  Double As(EngineeringUnits.Units.DensityUnit)
+  Double get_GramPerCubicCentimeter()
+  Double get_GramPerCubicMeter()
+  Double get_GramPerCubicMillimeter()
+  Double get_GramPerDeciliter()
+  Double get_GramPerLiter()
+  Double get_GramPerMilliliter()
+  Double get_GramPerMicroliter()
+  Double get_KilogramPerCubicCentimeter()
+  Double get_KilogramPerCubicMeter()
+  Double get_KilogramPerCubicMillimeter()
+  Double get_KilogramPerLiter()
+  Double get_KilopoundPerCubicFoot()
+  Double get_KilopoundPerCubicInch()
+  Double get_MicrogramPerCubicMeter()
+  Double get_MilligramPerCubicMeter()
+  Double get_PoundPerCubicFoot()
+  Double get_PoundPerCubicInch()
+  Double get_SlugPerCubicFoot()
+  Double get_TonnePerCubicCentimeter()
+  Double get_TonnePerCubicMeter()
+  Double get_TonnePerCubicMillimeter()
+  EngineeringUnits.Density FromGramPerCubicCentimeter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromGramPerCubicMeter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromGramPerCubicMillimeter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromGramPerDeciliter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromGramPerLiter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromGramPerMilliliter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromGramPerMicroliter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromKilogramPerCubicCentimeter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromKilogramPerCubicMeter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromKilogramPerCubicMillimeter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromKilogramPerLiter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromKilopoundPerCubicFoot(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromKilopoundPerCubicInch(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromMicrogramPerCubicMeter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromMilligramPerCubicMeter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromPoundPerCubicFoot(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromPoundPerCubicInch(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromSlugPerCubicFoot(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromTonnePerCubicCentimeter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromTonnePerCubicMeter(System.Nullable`1[System.Double])
+  EngineeringUnits.Density FromTonnePerCubicMillimeter(System.Nullable`1[System.Double])
+  Double get_GramsPerCubicCentimeter()
+  Double get_GramsPerCubicMeter()
+  Double get_GramsPerCubicMillimeter()
+  Double get_GramsPerDeciLiter()
+  Double get_GramsPerLiter()
+  Double get_GramsPerMilliliter()
+  Double get_KilogramsPerCubicCentimeter()
+  Double get_KilogramsPerCubicMeter()
+  Double get_KilogramsPerCubicMillimeter()
+  Double get_KilogramsPerLiter()
+  Double get_KilopoundsPerCubicFoot()
+  Double get_KilopoundsPerCubicInch()
+  Double get_MicrogramsPerCubicMeter()
+  Double get_MilligramsPerCubicMeter()
+  Double get_PoundsPerCubicFoot()
+  Double get_PoundsPerCubicInch()
+  Double get_SlugsPerCubicFoot()
+  Double get_TonnesPerCubicCentimeter()
+  Double get_TonnesPerCubicMeter()
+  Double get_TonnesPerCubicMillimeter()
+  EngineeringUnits.Density FromGramsPerCubicCentimeter(Double)
+  EngineeringUnits.Density FromGramsPerCubicMeter(Double)
+  EngineeringUnits.Density FromGramsPerCubicMillimeter(Double)
+  EngineeringUnits.Density FromGramsPerDeciLiter(Double)
+  EngineeringUnits.Density FromGramsPerLiter(Double)
+  EngineeringUnits.Density FromGramsPerMilliliter(Double)
+  EngineeringUnits.Density FromKilogramsPerCubicCentimeter(Double)
+  EngineeringUnits.Density FromKilogramsPerCubicMeter(Double)
+  EngineeringUnits.Density FromKilogramsPerCubicMillimeter(Double)
+  EngineeringUnits.Density FromKilogramsPerLiter(Double)
+  EngineeringUnits.Density FromKilopoundsPerCubicFoot(Double)
+  EngineeringUnits.Density FromKilopoundsPerCubicInch(Double)
+  EngineeringUnits.Density FromMicrogramsPerCubicMeter(Double)
+  EngineeringUnits.Density FromMilligramsPerCubicMeter(Double)
+  EngineeringUnits.Density FromPoundsPerCubicFoot(Double)
+  EngineeringUnits.Density FromPoundsPerCubicInch(Double)
+  EngineeringUnits.Density FromSlugsPerCubicFoot(Double)
+  EngineeringUnits.Density FromTonnesPerCubicCentimeter(Double)
+  EngineeringUnits.Density FromTonnesPerCubicMeter(Double)
+  EngineeringUnits.Density FromTonnesPerCubicMillimeter(Double)
+  Void .ctor()
+  Void .ctor(Fractions.Fraction, EngineeringUnits.Units.DensityUnit)
+  Void .ctor(System.Decimal, EngineeringUnits.Units.DensityUnit)
+  Void .ctor(Double, EngineeringUnits.Units.DensityUnit)
+  Void .ctor(Int32, EngineeringUnits.Units.DensityUnit)
+  Void .ctor(EngineeringUnits.UnknownUnit)
+  Double GramPerCubicCentimeter
+  Double GramPerCubicMeter
+  Double GramPerCubicMillimeter
+  Double GramPerDeciliter
+  Double GramPerLiter
+  Double GramPerMilliliter
+  Double GramPerMicroliter
+  Double KilogramPerCubicCentimeter
+  Double KilogramPerCubicMeter
+  Double KilogramPerCubicMillimeter
+  Double KilogramPerLiter
+  Double KilopoundPerCubicFoot
+  Double KilopoundPerCubicInch
+  Double MicrogramPerCubicMeter
+  Double MilligramPerCubicMeter
+  Double PoundPerCubicFoot
+  Double PoundPerCubicInch
+  Double SlugPerCubicFoot
+  Double TonnePerCubicCentimeter
+  Double TonnePerCubicMeter
+  Double TonnePerCubicMillimeter
+  Double GramsPerCubicCentimeter
+  Double GramsPerCubicMeter
+  Double GramsPerCubicMillimeter
+  Double GramsPerDeciLiter
+  Double GramsPerLiter
+  Double GramsPerMilliliter
+  Double KilogramsPerCubicCentimeter
+  Double KilogramsPerCubicMeter
+  Double KilogramsPerCubicMillimeter
+  Double KilogramsPerLiter
+  Double KilopoundsPerCubicFoot
+  Double KilopoundsPerCubicInch
+  Double MicrogramsPerCubicMeter
+  Double MilligramsPerCubicMeter
+  Double PoundsPerCubicFoot
+  Double PoundsPerCubicInch
+  Double SlugsPerCubicFoot
+  Double TonnesPerCubicCentimeter
+  Double TonnesPerCubicMeter
+  Double TonnesPerCubicMillimeter
+EngineeringUnits.DynamicViscosity class
+  Double As(EngineeringUnits.Units.DynamicViscosityUnit)
+  Void .ctor()
+  Void .ctor(Fractions.Fraction, EngineeringUnits.Units.DynamicViscosityUnit)
+  Void .ctor(System.Decimal, EngineeringUnits.Units.DynamicViscosityUnit)
+  Void .ctor(Double, EngineeringUnits.Units.DynamicViscosityUnit)
+  Void .ctor(Int32, EngineeringUnits.Units.DynamicViscosityUnit)
+  Void .ctor(EngineeringUnits.UnknownUnit)
+EngineeringUnits.KinematicViscosity class
+  Double As(EngineeringUnits.Units.KinematicViscosityUnit)
+  Void .ctor()
+  Void .ctor(Fractions.Fraction, EngineeringUnits.Units.KinematicViscosityUnit)
+  Void .ctor(System.Decimal, EngineeringUnits.Units.KinematicViscosityUnit)
+  Void .ctor(Double, EngineeringUnits.Units.KinematicViscosityUnit)
+  Void .ctor(Int32, EngineeringUnits.Units.KinematicViscosityUnit)
+  Void .ctor(EngineeringUnits.UnknownUnit)
+EngineeringUnits.MassFlow class
+  Double As(EngineeringUnits.Units.MassFlowUnit)
+  Double get_GramPerDay()
+  Double get_GramPerHour()
+  Double get_GramPerSecond()
+  Double get_KilogramPerSecond()
+  Double get_KilogramPerMinute()
+  Double get_KilogramPerHour()
+  Double get_KilogramPerDay()
+  EngineeringUnits.MassFlow FromGramPerDay(System.Nullable`1[System.Double])
+  EngineeringUnits.MassFlow FromGramPerHour(System.Nullable`1[System.Double])
+  EngineeringUnits.MassFlow FromGramPerSecond(System.Nullable`1[System.Double])
+  EngineeringUnits.MassFlow FromKilogramPerSecond(System.Nullable`1[System.Double])
+  EngineeringUnits.MassFlow FromKilogramPerMinute(System.Nullable`1[System.Double])
+  EngineeringUnits.MassFlow FromKilogramPerHour(System.Nullable`1[System.Double])
+  EngineeringUnits.MassFlow FromKilogramPerDay(System.Nullable`1[System.Double])
+  Double get_GramsPerDay()
+  Double get_GramsPerHour()
+  Double get_GramsPerSecond()
+  Double get_KilogramsPerDay()
+  Double get_KilogramsPerHour()
+  Double get_KilogramsPerMinute()
+  Double get_KilogramsPerSecond()
+  EngineeringUnits.MassFlow FromGramsPerDay(Double)
+  EngineeringUnits.MassFlow FromGramsPerHour(Double)
+  EngineeringUnits.MassFlow FromGramsPerSecond(Double)
+  EngineeringUnits.MassFlow FromKilogramsPerDay(Double)
+  EngineeringUnits.MassFlow FromKilogramsPerHour(Double)
+  EngineeringUnits.MassFlow FromKilogramsPerMinute(Double)
+  EngineeringUnits.MassFlow FromKilogramsPerSecond(Double)
+  Void .ctor()
+  Void .ctor(Fractions.Fraction, EngineeringUnits.Units.MassFlowUnit)
+  Void .ctor(System.Decimal, EngineeringUnits.Units.MassFlowUnit)
+  Void .ctor(Double, EngineeringUnits.Units.MassFlowUnit)
+  Void .ctor(Int32, EngineeringUnits.Units.MassFlowUnit)
+  Void .ctor(EngineeringUnits.UnknownUnit)
+  Double GramPerDay
+  Double GramPerHour
+  Double GramPerSecond
+  Double KilogramPerSecond
+  Double KilogramPerMinute
+  Double KilogramPerHour
+  Double KilogramPerDay
+  Double GramsPerDay
+  Double GramsPerHour
+  Double GramsPerSecond
+  Double KilogramsPerDay
+  Double KilogramsPerHour
+  Double KilogramsPerMinute
+  Double KilogramsPerSecond
+EngineeringUnits.Ratio class
+  Double get_PartsPerBillion()
+  Double get_PartsPerMillion()
+  Double get_PartsPerThousand()
+  Double get_PartsPerTrillion()
+  Double get_CentigramsPerGram()
+  Double get_CentigramsPerKilogram()
+  Double get_DecagramsPerGram()
+  Double get_DecagramsPerKilogram()
+  Double get_DecigramsPerGram()
+  Double get_DecigramsPerKilogram()
+  Double get_GramsPerGram()
+  Double get_GramsPerKilogram()
+  Double get_HectogramsPerGram()
+  Double get_HectogramsPerKilogram()
+  Double get_KilogramsPerGram()
+  Double get_KilogramsPerKilogram()
+  Double get_MicrogramsPerGram()
+  Double get_MicrogramsPerKilogram()
+  Double get_MilligramsPerGram()
+  Double get_MilligramsPerKilogram()
+  Double get_NanogramsPerGram()
+  Double get_NanogramsPerKilogram()
+  EngineeringUnits.Ratio FromPartsPerBillion(Double)
+  EngineeringUnits.Ratio FromPartsPerMillion(Double)
+  EngineeringUnits.Ratio FromPartsPerThousand(Double)
+  EngineeringUnits.Ratio FromPartsPerTrillion(Double)
+  EngineeringUnits.Ratio FromCentigramsPerGram(Double)
+  EngineeringUnits.Ratio FromCentigramsPerKilogram(Double)
+  EngineeringUnits.Ratio FromDecagramsPerGram(Double)
+  EngineeringUnits.Ratio FromDecagramsPerKilogram(Double)
+  EngineeringUnits.Ratio FromDecigramsPerGram(Double)
+  EngineeringUnits.Ratio FromDecigramsPerKilogram(Double)
+  EngineeringUnits.Ratio FromGramsPerGram(Double)
+  EngineeringUnits.Ratio FromGramsPerKilogram(Double)
+  EngineeringUnits.Ratio FromHectogramsPerGram(Double)
+  EngineeringUnits.Ratio FromHectogramsPerKilogram(Double)
+  EngineeringUnits.Ratio FromKilogramsPerGram(Double)
+  EngineeringUnits.Ratio FromKilogramsPerKilogram(Double)
+  EngineeringUnits.Ratio FromMicrogramsPerGram(Double)
+  EngineeringUnits.Ratio FromMicrogramsPerKilogram(Double)
+  EngineeringUnits.Ratio FromMilligramsPerGram(Double)
+  EngineeringUnits.Ratio FromMilligramsPerKilogram(Double)
+  EngineeringUnits.Ratio FromNanogramsPerGram(Double)
+  EngineeringUnits.Ratio FromNanogramsPerKilogram(Double)
+  Double As(EngineeringUnits.Units.RatioUnit)
+  Double get_PartPerBillion()
+  Double get_PartPerMillion()
+  Double get_PartPerThousand()
+  Double get_PartPerTrillion()
+  Double get_Percent()
+  Double get_CentigramPerGram()
+  Double get_CentigramPerKilogram()
+  Double get_DecagramPerGram()
+  Double get_DecagramPerKilogram()
+  Double get_DecigramPerGram()
+  Double get_DecigramPerKilogram()
+  Double get_GramPerGram()
+  Double get_GramPerKilogram()
+  Double get_HectogramPerGram()
+  Double get_HectogramPerKilogram()
+  Double get_KilogramPerGram()
+  Double get_KilogramPerKilogram()
+  Double get_MicrogramPerGram()
+  Double get_MicrogramPerKilogram()
+  Double get_MilligramPerGram()
+  Double get_MilligramPerKilogram()
+  Double get_NanogramPerGram()
+  Double get_NanogramPerKilogram()
+  EngineeringUnits.Ratio FromPartPerBillion(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromPartPerMillion(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromPartPerThousand(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromPartPerTrillion(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromPercent(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromCentigramPerGram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromCentigramPerKilogram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromDecagramPerGram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromDecagramPerKilogram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromDecigramPerGram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromDecigramPerKilogram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromGramPerGram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromGramPerKilogram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromHectogramPerGram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromHectogramPerKilogram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromKilogramPerGram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromKilogramPerKilogram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromMicrogramPerGram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromMicrogramPerKilogram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromMilligramPerGram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromMilligramPerKilogram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromNanogramPerGram(System.Nullable`1[System.Double])
+  EngineeringUnits.Ratio FromNanogramPerKilogram(System.Nullable`1[System.Double])
+  Void .ctor()
+  Void .ctor(Fractions.Fraction, EngineeringUnits.Units.RatioUnit)
+  Void .ctor(System.Decimal, EngineeringUnits.Units.RatioUnit)
+  Void .ctor(Double, EngineeringUnits.Units.RatioUnit)
+  Void .ctor(Int32, EngineeringUnits.Units.RatioUnit)
+  Void .ctor(EngineeringUnits.UnknownUnit)
+  Double PartsPerBillion
+  Double PartsPerMillion
+  Double PartsPerThousand
+  Double PartsPerTrillion
+  Double CentigramsPerGram
+  Double CentigramsPerKilogram
+  Double DecagramsPerGram
+  Double DecagramsPerKilogram
+  Double DecigramsPerGram
+  Double DecigramsPerKilogram
+  Double GramsPerGram
+  Double GramsPerKilogram
+  Double HectogramsPerGram
+  Double HectogramsPerKilogram
+  Double KilogramsPerGram
+  Double KilogramsPerKilogram
+  Double MicrogramsPerGram
+  Double MicrogramsPerKilogram
+  Double MilligramsPerGram
+  Double MilligramsPerKilogram
+  Double NanogramsPerGram
+  Double NanogramsPerKilogram
+  Double PartPerBillion
+  Double PartPerMillion
+  Double PartPerThousand
+  Double PartPerTrillion
+  Double Percent
+  Double CentigramPerGram
+  Double CentigramPerKilogram
+  Double DecagramPerGram
+  Double DecagramPerKilogram
+  Double DecigramPerGram
+  Double DecigramPerKilogram
+  Double GramPerGram
+  Double GramPerKilogram
+  Double HectogramPerGram
+  Double HectogramPerKilogram
+  Double KilogramPerGram
+  Double KilogramPerKilogram
+  Double MicrogramPerGram
+  Double MicrogramPerKilogram
+  Double MilligramPerGram
+  Double MilligramPerKilogram
+  Double NanogramPerGram
+  Double NanogramPerKilogram
+EngineeringUnits.UnitSystem class
+  Void .ctor()
+  Void .ctor(System.Collections.Generic.List`1[EngineeringUnits.RawUnit], System.String)
+  Void .ctor(EngineeringUnits.RawUnit)
+  Void .ctor(System.Decimal, System.String)
+  Void .ctor(EngineeringUnits.UnitSystem, System.String)
+EngineeringUnits.UnknownUnit class
+  Void .ctor()
+  Void .ctor(Double, EngineeringUnits.UnitSystem)
+  Void .ctor(System.Decimal, EngineeringUnits.UnitSystem)
+  Void .ctor(EngineeringUnits.DecimalSafe, EngineeringUnits.UnitSystem)
+  Void .ctor(EngineeringUnits.BaseUnit)

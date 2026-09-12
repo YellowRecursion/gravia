@@ -1,0 +1,166 @@
+[
+  {
+    "name": "react",
+    "version": "19.3.0",
+    "license": "MIT",
+    "peerDependencies": null,
+    "engines": {
+      "node": ">=0.10.0"
+    },
+    "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog==",
+    "source": "https://registry.npmjs.org/react/19.3.0"
+  },
+  {
+    "name": "react-dom",
+    "version": "19.3.0",
+    "license": "MIT",
+    "peerDependencies": {
+      "react": "^19.3.0"
+    },
+    "engines": null,
+    "integrity": "sha512-JDk8dgif51OjFoDE70+OT9ICyYr+69HlmihNwp1+Nsfbna3t5sIiCa9ZJktDmQ4/1b/rn26hIAR2uYXDMr5r0Q==",
+    "source": "https://registry.npmjs.org/react-dom/19.3.0"
+  },
+  {
+    "name": "antd",
+    "version": "6.6.3",
+    "license": "MIT",
+    "peerDependencies": {
+      "react": ">=18.0.0",
+      "react-dom": ">=18.0.0"
+    },
+    "engines": null,
+    "integrity": "sha512-USnOxcOhWEQc65pHapSiCrZOijWef783XnqYZv8fuYIcYVoFxNxl6TsnsUhmoJyZheD/XwAx9CyO+hlyekDCQA==",
+    "source": "https://registry.npmjs.org/antd/6.6.3"
+  },
+  {
+    "name": "@xyflow/react",
+    "version": "12.11.6",
+    "license": "MIT",
+    "peerDependencies": {
+      "react": ">=17",
+      "react-dom": ">=17",
+      "@types/react": ">=17",
+      "@types/react-dom": ">=17"
+    },
+    "engines": null,
+    "integrity": "sha512-9XsEJNHjatKYndszKTF/bsU7FOP9dJ6V/EQwzy3oMdtqgBuUq7BjKSwkEo+C7s4qHstHQfwwoHA3E8QfpPxZZQ==",
+    "source": "https://registry.npmjs.org/@xyflow/react/12.11.6"
+  },
+  {
+    "name": "dockview-react",
+    "version": "8.3.0",
+    "license": "MIT",
+    "peerDependencies": {
+      "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
+      "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+    },
+    "engines": null,
+    "integrity": "sha512-gtD0f1hX4GABQ4DtT+1W7q6MOfP+ecZyiUv2MiIio63RiqNrdBQGNRxy6HaEFU2kNNo1bPILQ2IsLuBnTXV+Zw==",
+    "source": "https://registry.npmjs.org/dockview-react/8.3.0"
+  },
+  {
+    "name": "vite",
+    "version": "8.3.0",
+    "license": "MIT",
+    "peerDependencies": {
+      "tsx": "^4.8.1",
+      "jiti": ">=1.21.0",
+      "less": "^4.0.0",
+      "sass": "^1.70.0",
+      "yaml": "^2.4.2",
+      "stylus": ">=0.54.8",
+      "terser": "^5.16.0",
+      "esbuild": "^0.27.0 || ^0.28.0",
+      "sugarss": "^5.0.0",
+      "@types/node": "^20.19.0 || >=22.12.0",
+      "sass-embedded": "^1.70.0",
+      "@vitejs/devtools": "^0.7.1"
+    },
+    "engines": {
+      "node": "^20.19.0 || >=22.12.0"
+    },
+    "integrity": "sha512-lhZBVvEHefgE+HQZC9O7EBJgCU/nVzFNl7vkS4RE0APtWLP02/8QVIkQtzBxPquh7lq5/78NHipTj7ODQ6XuyQ==",
+    "source": "https://registry.npmjs.org/vite/8.3.0"
+  },
+  {
+    "name": "@vitejs/plugin-react",
+    "version": "6.1.1",
+    "license": "MIT",
+    "peerDependencies": {
+      "vite": "^8.0.0",
+      "oxc-transform-react": "^0.145.0",
+      "@rolldown/plugin-babel": "^0.1.7 || ^0.2.0",
+      "babel-plugin-react-compiler": "^1.0.0"
+    },
+    "engines": {
+      "node": "^20.19.0 || >=22.12.0"
+    },
+    "integrity": "sha512-yxLaQV9gkhS8ezJqCM6+ndU7mDY6gqAg75NQ+0IjwEI8IYOmQCgkRwHKVSfWXW076DsqMo0Dk+0FK1U+M5RgFw==",
+    "source": "https://registry.npmjs.org/@vitejs/plugin-react/6.1.1"
+  },
+  {
+    "name": "typescript",
+    "version": "7.0.2",
+    "license": "Apache-2.0",
+    "peerDependencies": null,
+    "engines": {
+      "node": ">=16.20.0"
+    },
+    "integrity": "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA==",
+    "source": "https://registry.npmjs.org/typescript/7.0.2"
+  },
+  {
+    "name": "@types/react",
+    "version": "19.3.0",
+    "license": "MIT",
+    "peerDependencies": {},
+    "engines": null,
+    "integrity": "sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==",
+    "source": "https://registry.npmjs.org/@types/react/19.3.0"
+  },
+  {
+    "name": "@types/react-dom",
+    "version": "19.3.0",
+    "license": "MIT",
+    "peerDependencies": {
+      "@types/react": "^19.3.0"
+    },
+    "engines": null,
+    "integrity": "sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q==",
+    "source": "https://registry.npmjs.org/@types/react-dom/19.3.0"
+  },
+  {
+    "name": "@types/node",
+    "version": "22.20.2",
+    "license": "MIT",
+    "peerDependencies": {},
+    "engines": null,
+    "integrity": "sha512-xlvWf4Vs9n1PEVYwP1n4vvG07M6y8WgvJ2t0vbrWTmijsIHp1cS+uJ2kMIRdY3nHZK0nCYKrPeD171+SzF4/zw==",
+    "source": "https://registry.npmjs.org/@types/node/22.20.2"
+  },
+  {
+    "name": "i18next",
+    "version": "26.4.2",
+    "license": "MIT",
+    "peerDependencies": {
+      "typescript": "^5 || ^6 || ^7"
+    },
+    "engines": null,
+    "integrity": "sha512-RX+R0VLg13IbvRuJSxnqykUFS9vQZTl8wYpWPCIUDWVrSGjsQywB5Y+pjzrkboxGAuYfJZVH1InFTdgBdxq6ug==",
+    "source": "https://registry.npmjs.org/i18next/26.4.2"
+  },
+  {
+    "name": "react-i18next",
+    "version": "17.0.13",
+    "license": "MIT",
+    "peerDependencies": {
+      "react": ">= 16.8.0",
+      "i18next": ">= 26.2.0",
+      "typescript": "^5 || ^6 || ^7"
+    },
+    "engines": null,
+    "integrity": "sha512-Cc1PscmblIHA1kljTqDwrcVMI21ydgmUzw0UAeQBe7pAOgfuRLfzXze4EUBQoeDiICzFIXXhHFoZxuetNg5D0Q==",
+    "source": "https://registry.npmjs.org/react-i18next/17.0.13"
+  }
+]
