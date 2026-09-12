@@ -5,9 +5,10 @@ import hooks from 'eslint-plugin-react-hooks';
 import refresh from 'eslint-plugin-react-refresh';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import { architectureConfig } from './tooling/architecture.mjs';
 
 export default defineConfig(
-  globalIgnores(['dist/**', 'renderer/api/generated/**']),
+  globalIgnores(['dist/**', 'renderer/shared/api/generated/**', 'tests/fixtures/**']),
   {
     files: ['**/*.{cjs,mjs}'],
     extends: [js.configs.recommended],
@@ -29,5 +30,6 @@ export default defineConfig(
     extends: [hooks.configs.flat.recommended, refresh.configs.vite],
     languageOptions: { globals: globals.browser },
   },
+  architectureConfig(import.meta.dirname),
   prettier,
 );

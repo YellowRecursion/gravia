@@ -12,8 +12,8 @@ export default defineConfig(() => {
     gravia: {
       input,
       output: {
-        target: './renderer/api/generated/client.ts',
-        schemas: './renderer/api/generated/models',
+        target: './renderer/shared/api/generated/client.ts',
+        schemas: './renderer/shared/api/generated/models',
         client: 'react-query',
         httpClient: 'fetch',
         baseUrl: '',

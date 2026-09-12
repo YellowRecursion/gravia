@@ -5,6 +5,7 @@ import enUS from 'antd/locale/en_US';
 import ruRU from 'antd/locale/ru_RU';
 import { useTranslation } from 'react-i18next';
 
+// Server cache only. Editor state must not duplicate these responses.
 const queryClient = new QueryClient();
 
 export function AppProviders({ children }: PropsWithChildren) {

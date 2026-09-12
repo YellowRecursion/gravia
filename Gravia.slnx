@@ -22,7 +22,8 @@
     <File Path="src/Gravia.Desktop/orval.config.ts" />
     <File Path="src/Gravia.Desktop/eslint.config.mjs" />
     <File Path="src/Gravia.Desktop/renderer/index.html" />
-    <File Path="src/Gravia.Desktop/renderer/main.tsx" />
-    <File Path="src/Gravia.Desktop/renderer/App.tsx" />
+    <File Path="src/Gravia.Desktop/AGENTS.md" />
+    <File Path="src/Gravia.Desktop/renderer/app/entrypoint/main.tsx" />
+    <File Path="src/Gravia.Desktop/renderer/app/ui/App.tsx" />
   </Folder>
 </Solution>
