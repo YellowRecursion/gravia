@@ -1,6 +1,8 @@
 using Gravia.Application;
 using Gravia.Infrastructure;
+using Gravia.Host.Errors;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Gravia.Host;
 
@@ -10,6 +12,7 @@ public static class DependencyInjection
     {
         services.AddApplicationServices();
         services.AddInfrastructureServices();
+        services.TryAddSingleton<ExceptionHandler>();
 
         return services;
     }
