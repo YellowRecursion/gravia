@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Gravia.Domain.Localization.Entities;
+using Gravia.Domain.Settings.Entities;
 
 namespace Gravia.Domain.Settings.Interfaces;
 
@@ -7,8 +9,16 @@ public interface ISetting
 {
     string Id { get; }
     LocalizedText Title { get; }
+    /// <summary>Placement in the UI, independent of the setting's identity and storage.</summary>
+    SettingsUiPath UiPath { get; }
     LocalizedText? Description { get; }
 
-    /// <summary>Restores the default value using the same validation as an ordinary change.</summary>
+    /// <summary>Restores the default value.</summary>
     void Reset();
+
+    /// <summary>Serializes the current value only, without setting metadata.</summary>
+    JsonElement SerializeValue();
+
+    /// <summary>Deserializes and assigns a value. Deserialization failure leaves the current value unchanged.</summary>
+    void DeserializeValue(JsonElement value);
 }
