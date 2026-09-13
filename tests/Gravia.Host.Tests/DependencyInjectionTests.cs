@@ -1,6 +1,8 @@
 using Gravia.Application.Common.Behaviors;
 using Gravia.Application.Logging;
+using Gravia.Application.Storage;
 using Gravia.Infrastructure.Logging;
+using Gravia.Infrastructure.Storage;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,6 +39,46 @@ public sealed class DependencyInjectionTests
     }
 
     public sealed record TestCommand : IRequest<int>;
+
+    [Fact]
+    public async Task ApplicationDataStoreIsSharedAcrossScopesAndDisposedWithHost()
+    {
+        var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder(
+            new HostApplicationBuilderSettings { DisableDefaults = true });
+        builder.Services.AddHostServices();
+        builder.Services.AddTransient<ApplicationStorageConsumer>();
+
+        IDataStore storage;
+        KeyValueStore values;
+        using (var host = builder.Build())
+        {
+            using var first = host.Services.CreateScope();
+            using var second = host.Services.CreateScope();
+            storage = host.Services.GetRequiredKeyedService<IDataStore>(DataStoreKey.Application);
+            values = host.Services.GetRequiredKeyedService<KeyValueStore>(DataStoreKey.Application);
+            Assert.Same(values, first.ServiceProvider.GetRequiredService<ApplicationStorageConsumer>().Values);
+            Assert.Same(values, second.ServiceProvider.GetRequiredService<ApplicationStorageConsumer>().Values);
+            Assert.Throws<InvalidOperationException>(() => host.Services.GetRequiredService<KeyValueStore>());
+            Assert.IsType<FileDataStore>(storage);
+            Assert.Same(storage, first.ServiceProvider.GetRequiredKeyedService<IDataStore>(DataStoreKey.Application));
+            Assert.Same(storage, second.ServiceProvider.GetRequiredKeyedService<IDataStore>(DataStoreKey.Application));
+            Assert.Same(storage, first.ServiceProvider.GetRequiredService<ApplicationStorageConsumer>().Storage);
+            Assert.Same(storage, second.ServiceProvider.GetRequiredService<ApplicationStorageConsumer>().Storage);
+            Assert.Throws<InvalidOperationException>(() => host.Services.GetRequiredService<IDataStore>());
+        }
+
+        // Resolving the store does not create files. A disposed store must fail before any I/O.
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => storage.ExistsAsync("unused.bin"));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => values.GetAsync<int>("unused"));
+    }
+
+    public sealed class ApplicationStorageConsumer(
+        [FromKeyedServices(DataStoreKey.Application)] IDataStore storage,
+        [FromKeyedServices(DataStoreKey.Application)] KeyValueStore values)
+    {
+        public IDataStore Storage { get; } = storage;
+        public KeyValueStore Values { get; } = values;
+    }
 
     [Fact]
     public void LogCapacityCanBeConfiguredThroughDependencyInjection()

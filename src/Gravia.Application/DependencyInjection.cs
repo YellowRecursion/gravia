@@ -1,6 +1,8 @@
 using FluentValidation;
 using Gravia.Application.Common.Behaviors;
+using Gravia.Application.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Gravia.Application;
 
@@ -8,6 +10,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.TryAddKeyedSingleton<KeyValueStore>(DataStoreKey.Application,
+            (provider, _) => new KeyValueStore(provider.GetRequiredKeyedService<IDataStore>(DataStoreKey.Application)));
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
         services.AddMediatR(configuration =>
         {

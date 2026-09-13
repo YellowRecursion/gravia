@@ -14,4 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="../Gravia.Domain/Gravia.Domain.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Projects\" />
+  </ItemGroup>
 </Project>
