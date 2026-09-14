@@ -1,69 +1,86 @@
-using Gravia.Domain.Localization;
+using System.Text.Json;
+using Gravia.Domain.Common.Events;
 using Gravia.Domain.Localization.Entities;
-using Gravia.Domain.Settings;
 using Gravia.Domain.Settings.Entities;
+using Gravia.Domain.Settings.Events;
 using Gravia.Domain.Settings.Interfaces;
 
 namespace Gravia.Domain.Tests.Settings.Entities;
 
 public sealed class SettingTests
 {
+    private static readonly LocalizedText Title = new("en", "Iterations");
+    private static readonly SettingsUiPath UiPath = new(new LocalizedText("en", "General"));
+
     [Fact]
     public void ConstructorPreservesMetadataAndInitializesValueFromDefault()
     {
-        var title = new LocalizedText("en", "Iterations");
-        var description = new LocalizedText("en", "Maximum iterations");
-        var setting = new PositiveSetting("plugin.iterations", title, 10, description);
+        var description = new LocalizedText("en", "Iteration count");
+        var setting = new IntSetting("plugin.iterations", Title, 10, UiPath, description);
 
         ISetting common = setting;
         Assert.Equal("plugin.iterations", common.Id);
-        Assert.Same(title, common.Title);
+        Assert.Same(Title, common.Title);
+        Assert.Same(UiPath, common.UiPath);
         Assert.Same(description, common.Description);
         Assert.Equal(10, setting.DefaultValue);
         Assert.Equal(10, setting.Value);
     }
 
     [Fact]
-    public void SetValueAndResetPreserveTheDefault()
+    public void SetValueAndResetNotifyWhileSilentAssignmentAndDeserializationDoNot()
     {
-        var setting = Create();
+        var setting = new IntSetting("iterations", Title, 10, UiPath);
+        var notifiedValues = new List<int>();
+        void OnRaised(DomainEvent domainEvent)
+        {
+            if (domainEvent is SettingChanged changed && ReferenceEquals(changed.Setting, setting))
+                notifiedValues.Add(setting.Value);
+        }
 
-        setting.SetValue(20);
-        Assert.Equal(20, setting.Value);
-        Assert.Equal(10, setting.DefaultValue);
+        DomainEventPublisher.DomainEventRaised += OnRaised;
+        try
+        {
+            setting.SetValueWithoutNotify(20);
+            Assert.Equal(20, setting.Value);
+            Assert.Empty(notifiedValues);
 
-        ((ISetting)setting).Reset();
-        Assert.Equal(10, setting.Value);
-        Assert.Equal(10, setting.DefaultValue);
-        Assert.Null(setting.Description);
+            setting.SetValue(30);
+            Assert.Equal(new[] { 30 }, notifiedValues);
+
+            setting.DeserializeValue(JsonSerializer.SerializeToElement(40));
+            Assert.Equal(40, setting.Value);
+            Assert.Equal(new[] { 30 }, notifiedValues);
+
+            ((ISetting)setting).Reset();
+            Assert.Equal(10, setting.Value);
+            Assert.Equal(10, setting.DefaultValue);
+            Assert.Equal(new[] { 30, 10 }, notifiedValues);
+        }
+        finally { DomainEventPublisher.DomainEventRaised -= OnRaised; }
     }
 
     [Fact]
-    public void FailedValidationPreservesTheCurrentValue()
+    public void FailedDeserializationPreservesValueAndDoesNotNotify()
     {
-        var setting = Create();
-        setting.SetValue(20);
+        var setting = new IntSetting("iterations", Title, 10, UiPath);
+        setting.SetValueWithoutNotify(20);
+        var notifications = 0;
+        void OnRaised(DomainEvent domainEvent)
+        {
+            if (domainEvent is SettingChanged changed && ReferenceEquals(changed.Setting, setting))
+                notifications++;
+        }
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => setting.SetValue(0));
-        Assert.Equal(20, setting.Value);
-        Assert.Equal(10, setting.DefaultValue);
-    }
-
-    [Fact]
-    public void ResetUsesValidation()
-    {
-        var setting = Create();
-        setting.SetValue(20);
-        setting.Reset();
-
-        Assert.Equal(new[] { 10, 20, 10 }, setting.ValidatedValues);
-    }
-
-    [Fact]
-    public void DerivedConstructorValidatesDefaultAfterInitializingConstraints()
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() => Create(0));
-        Assert.Equal(10, Create().Value);
+        DomainEventPublisher.DomainEventRaised += OnRaised;
+        try
+        {
+            Assert.Throws<JsonException>(() => setting.DeserializeValue(JsonSerializer.SerializeToElement("wrong")));
+            Assert.Equal(20, setting.Value);
+            Assert.Equal(10, setting.DefaultValue);
+            Assert.Equal(0, notifications);
+        }
+        finally { DomainEventPublisher.DomainEventRaised -= OnRaised; }
     }
 
     [Theory]
@@ -71,36 +88,13 @@ public sealed class SettingTests
     [InlineData("")]
     [InlineData(" \t")]
     public void InvalidIdIsRejected(string? id)
-    {
-        Assert.ThrowsAny<ArgumentException>(() => new PositiveSetting(id!, new LocalizedText("en", "Title"), 10));
-    }
+        => Assert.ThrowsAny<ArgumentException>(() => new IntSetting(id!, Title, 10, UiPath));
 
     [Fact]
     public void NullTitleIsRejected()
-    {
-        Assert.Throws<ArgumentNullException>(() => new PositiveSetting("example", null!, 10));
-    }
+        => Assert.Throws<ArgumentNullException>(() => new IntSetting("iterations", null!, 10, UiPath));
 
-    private static PositiveSetting Create(int defaultValue = 10)
-        => new("iterations", new LocalizedText("en", "Iterations"), defaultValue);
-
-    private sealed class PositiveSetting : Setting<int>
-    {
-        private readonly int _minimum;
-        public List<int> ValidatedValues { get; } = [];
-
-        public PositiveSetting(string id, LocalizedText title, int defaultValue, LocalizedText? description = null)
-            : base(id, title, defaultValue, description)
-        {
-            _minimum = 1;
-            ValidateValue(defaultValue);
-        }
-
-        protected override void ValidateValue(int value)
-        {
-            Assert.Equal(1, _minimum);
-            ValidatedValues.Add(value);
-            if (value < _minimum) throw new ArgumentOutOfRangeException(nameof(value));
-        }
-    }
+    [Fact]
+    public void NullUiPathIsRejected()
+        => Assert.Throws<ArgumentNullException>(() => new IntSetting("iterations", Title, 10, null!));
 }
