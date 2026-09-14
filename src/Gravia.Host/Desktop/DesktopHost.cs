@@ -1,13 +1,14 @@
 using System.Net;
 using ActualLab.Rpc.Server;
 using Gravia.Infrastructure.Logging;
+using Gravia.Application.Logging;
 using Microsoft.Extensions.FileProviders;
 
 namespace Gravia.Host.Desktop;
 
 public static class DesktopHost
 {
-    public static WebApplication Build(string[] args)
+    public static WebApplication Build(string[] args, ILogJournal? journal = null, SessionFileLog? fileLog = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -20,6 +21,8 @@ public static class DesktopHost
             server.Configure(new ConfigurationBuilder().Build());
             server.Listen(IPAddress.Loopback, 0);
         });
+        if (journal is not null) builder.Services.AddSingleton(journal);
+        if (fileLog is not null) builder.Services.AddSingleton(fileLog);
         builder.Services.AddHostServices();
         builder.Services.Configure<InMemoryLogOptions>(builder.Configuration.GetSection(InMemoryLogOptions.SectionName));
         var desktop = new DesktopOptions();
@@ -51,9 +54,10 @@ public static class DesktopHost
         return app;
     }
 
-    public static async Task RunAsync(string[] args, CancellationToken cancellationToken)
+    public static async Task RunAsync(string[] args, CancellationToken cancellationToken,
+        ILogJournal? journal = null, SessionFileLog? fileLog = null)
     {
-        await using var app = Build(args);
+        await using var app = Build(args, journal, fileLog);
         var options = app.Services.GetRequiredService<DesktopOptions>();
         try
         {

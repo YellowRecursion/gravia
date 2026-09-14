@@ -135,11 +135,12 @@ public sealed class JournalLoggerProviderTests
 
     private sealed class ReplacementJournal : ILogJournal
     {
+        public event Action? Changed { add { } remove { } }
         public int Writes { get; private set; }
         public bool TryWrite(LogMessage message) { Writes++; return true; }
-        public LogPage Read(LogQuery? query = null) => throw new NotSupportedException();
+        public LogBatch Read(Guid? journalId = null, long afterSequence = 0) => throw new NotSupportedException();
+        public LogState GetState() => throw new NotSupportedException();
         public LogStatistics GetStatistics() => throw new NotSupportedException();
         public void Clear() { }
     }
 }
-

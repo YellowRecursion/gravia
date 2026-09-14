@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentValidation;
+using Gravia.Application.Logging;
 using Gravia.Application.Settings.Commands;
 using Gravia.Application.Settings.Queries;
 using Gravia.Application.Settings.Services;
@@ -27,6 +28,7 @@ public sealed class ApplicationSettingsRequestsTests : IAsyncLifetime
         services.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(NullLogger<>));
         services.AddKeyedSingleton<IDataStore>(DataStoreKey.Application, _data);
         services.AddApplicationServices();
+        services.AddSingleton<ILogJournal>(new UnusedLogJournal());
         _provider = services.BuildServiceProvider(new ServiceProviderOptions
         {
             ValidateOnBuild = true,

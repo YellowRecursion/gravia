@@ -13,6 +13,7 @@ public static class FusionServiceCollectionExtensions
         var fusion = services.AddFusion(RpcServiceMode.Server);
         fusion.Rpc.AddMiddleware<RpcExceptionMiddleware>();
         fusion.AddWebServer();
+        services.AddHostedService<Logging.LogJournalInvalidation>();
 
         var serviceTypes = typeof(FusionServiceCollectionExtensions).Assembly.DefinedTypes
             .Where(type => type is { IsClass: true, IsAbstract: false, ContainsGenericParameters: false })

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Gravia.Application.Logging;
 using Gravia.Application.Settings;
 using Gravia.Application.Settings.EventHandlers;
 using Gravia.Application.Settings.Events;
@@ -27,6 +28,7 @@ public sealed class SettingsStorageTests
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         services.AddKeyedSingleton<IDataStore>(DataStoreKey.Application, appData);
         services.AddApplicationServices();
+        services.AddSingleton<ILogJournal>(new UnusedLogJournal());
         await using var provider = services.BuildServiceProvider(
             new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         using var project = CreateProject(projectData);

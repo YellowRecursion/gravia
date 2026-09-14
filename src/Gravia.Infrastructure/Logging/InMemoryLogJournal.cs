@@ -8,39 +8,35 @@ using Microsoft.Extensions.Options;
 namespace Gravia.Infrastructure.Logging;
 
 /// <summary>
-/// Fixed byte ring. Capacity includes framing and all stored text/context, not caller allocations
-/// or detached read snapshots. No unbounded index, background queue, file, or subscriber collection.
+/// Fixed byte ring with a bounded offset table for O(1) lookup of the first unread record.
+/// Capacity covers serialized records; index, scratch and detached snapshots are additional.
 /// </summary>
 public sealed class InMemoryLogJournal : ILogJournal
 {
-    private const int HeaderSize = 44;
+    private const int HeaderSize = 20;
     private readonly object _gate = new();
     private readonly byte[] _buffer;
+    private readonly int[] _offsets;
     private readonly byte[] _scratch;
     private readonly BoundedWriteStream _stream;
     private readonly BinaryWriter _writer;
     private readonly TimeProvider _time;
-    private readonly int _maxReadBytes;
-    private readonly int _maxReadEntries;
-    private readonly int _maxScanEntries;
-    private readonly bool _collapse;
     private readonly Guid _id = Guid.NewGuid();
-    private int _head, _used, _count, _lastOffset, _lastLength;
-    private long _sequence, _evicted, _cleared, _rejected, _truncated, _discardedThrough;
+    private int _head, _used, _count;
+    private long _sequence, _revision, _evicted, _cleared, _rejected, _truncated;
+    public event Action? Changed;
 
     public InMemoryLogJournal(IOptions<InMemoryLogOptions> options, TimeProvider time)
     {
         var value = options.Value;
         value.Validate();
         _buffer = new byte[value.CapacityBytes];
+        // Live entries cannot collide: every record is larger than its header.
+        _offsets = new int[value.CapacityBytes / HeaderSize];
         _scratch = new byte[value.MaxEntryBytes - HeaderSize];
         _stream = new BoundedWriteStream(_scratch);
         _writer = new BinaryWriter(_stream, Encoding.UTF8, leaveOpen: true);
         _time = time;
-        _maxReadBytes = value.MaxReadBytes;
-        _maxReadEntries = value.MaxReadEntries;
-        _maxScanEntries = value.MaxScanEntries;
-        _collapse = value.CollapseConsecutive;
     }
 
     public bool TryWrite(LogMessage message)
@@ -53,27 +49,24 @@ public sealed class InMemoryLogJournal : ILogJournal
             lock (_gate) _rejected++;
             return false;
         }
-
         lock (_gate)
         {
             var truncated = message.IsTruncated;
             var category = LogText.Limit(message.Category, 128, ref truncated);
             var name = LogText.Limit(message.EventId.Name ?? "", 128, ref truncated);
             var text = LogText.Limit(message.Message, 4096, ref truncated);
-            var exception = LogText.Limit(message.Exception ?? "", 4096, ref truncated);
-            var properties = new SortedDictionary<string, string?>(StringComparer.Ordinal);
+            var exception = LogText.Limit(message.Exception ?? "", 32768, ref truncated);
+            var properties = new Dictionary<string, string?>(StringComparer.Ordinal);
             if (message.Properties is not null)
             {
                 var visited = 0;
                 foreach (var pair in message.Properties)
                 {
                     if (++visited > 32) { truncated = true; break; }
-                    var key = LogText.Limit(pair.Key, 64, ref truncated);
-                    properties[key] = pair.Value is null ? null : LogText.Limit(pair.Value, 256, ref truncated);
+                    properties[LogText.Limit(pair.Key, 64, ref truncated)] =
+                        pair.Value is null ? null : LogText.Limit(pair.Value, 256, ref truncated);
                 }
             }
-
-            // Drop details progressively, preserving a bounded readable record even for huge input.
             while (true)
             {
                 try
@@ -99,97 +92,93 @@ public sealed class InMemoryLogJournal : ILogJournal
                 catch (LogEntryTooLargeException)
                 {
                     truncated = true;
-                    if (exception.Length > 0)
-                        exception = LogText.Limit(exception, exception.Length / 2, ref truncated);
-                    else if (properties.Count > 0)
-                        properties.Remove(properties.Keys.Last());
-                    else if (text.Length > 0)
-                        text = LogText.Limit(text, text.Length / 2, ref truncated);
-                    else if (name.Length > 0)
-                        name = LogText.Limit(name, name.Length / 2, ref truncated);
-                    else
-                        category = LogText.Limit(category, category.Length / 2, ref truncated);
+                    if (properties.Count > 0) properties.Remove(properties.Keys.Last());
+                    else if (exception.Length > 0) exception = LogText.Limit(exception, exception.Length / 2, ref truncated);
+                    else if (text.Length > 0) text = LogText.Limit(text, text.Length / 2, ref truncated);
+                    else if (name.Length > 0) name = LogText.Limit(name, name.Length / 2, ref truncated);
+                    else category = LogText.Limit(category, category.Length / 2, ref truncated);
                 }
             }
-
             var length = HeaderSize + _stream.Written;
-            var sequence = ++_sequence;
-            var now = _time.GetUtcNow().UtcTicks;
-            if (truncated) _truncated++;
-
-            if (_collapse && _count > 0 && _lastLength == length && !truncated
-                && PayloadEquals(_lastOffset + HeaderSize, _scratch.AsSpan(0, _stream.Written)))
-            {
-                var previous = ReadHeader(_lastOffset);
-                WriteHeader(_lastOffset, previous with
-                {
-                    LastSequence = sequence, LastTicks = now, Repeats = previous.Repeats + 1
-                });
-                return true;
-            }
-
             while (_buffer.Length - _used < length)
             {
-                var oldest = ReadHeader(_head);
-                _head = (_head + oldest.Length) % _buffer.Length;
-                _used -= oldest.Length;
+                var oldestLength = ReadLength(_head);
+                _head = (_head + oldestLength) % _buffer.Length;
+                _used -= oldestLength;
                 _count--;
-                _evicted += oldest.Repeats;
-                _discardedThrough = oldest.LastSequence;
+                _evicted++;
             }
-
+            var sequence = ++_sequence;
             var offset = (_head + _used) % _buffer.Length;
-            WriteHeader(offset, new Header(length, sequence, sequence, now, now, 1));
+            Span<byte> header = stackalloc byte[HeaderSize];
+            BinaryPrimitives.WriteInt32LittleEndian(header, length);
+            BinaryPrimitives.WriteInt64LittleEndian(header[4..], sequence);
+            BinaryPrimitives.WriteInt64LittleEndian(header[12..], _time.GetUtcNow().UtcTicks);
+            CopyIn(offset, header);
             CopyIn(offset + HeaderSize, _scratch.AsSpan(0, _stream.Written));
-            _lastOffset = offset;
-            _lastLength = length;
+            _offsets[(int)(sequence % _offsets.Length)] = offset;
             _used += length;
             _count++;
-            return true;
+            _revision++;
+            if (truncated) _truncated++;
         }
+        NotifyChanged();
+        return true;
     }
 
-    public LogPage Read(LogQuery? query = null)
+    public LogBatch Read(Guid? journalId = null, long afterSequence = 0)
     {
-        query ??= new LogQuery { Limit = Math.Min(100, _maxReadEntries) };
-        if (query.AfterSequence < 0) throw new ArgumentOutOfRangeException(nameof(query.AfterSequence));
-        if (query.Limit < 1 || query.Limit > _maxReadEntries) throw new ArgumentOutOfRangeException(nameof(query.Limit));
-        if (query.MinimumLevel is < LogLevel.Trace or > LogLevel.None) throw new ArgumentOutOfRangeException(nameof(query.MinimumLevel));
-        if (query.Properties?.Count > 32) throw new ArgumentException("At most 32 property filters.", nameof(query));
-
+        if (afterSequence < 0) throw new ArgumentOutOfRangeException(nameof(afterSequence));
+        byte[] bytes;
+        LogState state;
+        bool reset;
         lock (_gate)
         {
-            if (query.AfterSequence > _sequence)
-                throw new ArgumentOutOfRangeException(nameof(query.AfterSequence), "Cursor belongs to a different journal or is in the future.");
-
-            var entries = new List<LogEntry>();
-            var next = Math.Max(query.AfterSequence, _discardedThrough);
-            var offset = _head;
-            var returnedBytes = 0;
-            var scannedBytes = 0;
-            var scanned = 0;
-            for (var index = 0; index < _count; index++)
+            state = State();
+            reset = journalId != _id || afterSequence > _sequence;
+            var after = reset ? 0 : afterSequence;
+            if (_count == 0 || after == _sequence)
+                bytes = [];
+            else
             {
-                var header = ReadHeader(offset);
-                var payloadOffset = offset + HeaderSize;
-                offset = (offset + header.Length) % _buffer.Length;
-                if (header.LastSequence <= query.AfterSequence) continue;
-                if (scanned >= _maxScanEntries || entries.Count >= query.Limit
-                    || returnedBytes + header.Length > _maxReadBytes
-                    || scannedBytes + header.Length > _maxReadBytes) break;
-                scanned++;
-                scannedBytes += header.Length;
-                CopyOut(payloadOffset, _scratch.AsSpan(0, header.Length - HeaderSize));
-                var entry = Decode(header);
-                next = header.LastSequence;
-                if (!Matches(entry, query)) continue;
-                entries.Add(entry);
-                returnedBytes += header.Length;
+                var first = Math.Max(state.FirstSequence, after + 1);
+                var offset = _offsets[(int)(first % _offsets.Length)];
+                var skippedBytes = (offset - _head + _buffer.Length) % _buffer.Length;
+                bytes = new byte[_used - skippedBytes];
+                CopyOut(offset, bytes);
             }
-
-            return new LogPage(_id, entries.AsReadOnly(), next, next < _sequence, query.AfterSequence < _discardedThrough);
         }
+        // Decode outside the writer lock.
+        var entries = new List<LogEntry>();
+        using var stream = new MemoryStream(bytes, writable: false);
+        using var reader = new BinaryReader(stream, Encoding.UTF8);
+        while (stream.Position < stream.Length)
+        {
+            _ = reader.ReadInt32();
+            var sequence = reader.ReadInt64();
+            var timestamp = new DateTimeOffset(reader.ReadInt64(), TimeSpan.Zero);
+            var level = (LogLevel)reader.ReadByte();
+            var eventId = reader.ReadInt32();
+            var truncated = reader.ReadBoolean();
+            var category = reader.ReadString();
+            var name = reader.ReadString();
+            var text = reader.ReadString();
+            var exception = reader.ReadString();
+            var count = reader.ReadByte();
+            var properties = new Dictionary<string, string?>(count, StringComparer.Ordinal);
+            for (var i = 0; i < count; i++)
+                properties.Add(reader.ReadString(), reader.ReadBoolean() ? reader.ReadString() : null);
+            entries.Add(new(sequence, timestamp, level, category, text,
+                new EventId(eventId, name.Length == 0 ? null : name),
+                exception.Length == 0 ? null : exception,
+                new ReadOnlyDictionary<string, string?>(properties), truncated));
+        }
+        return new(state, entries.AsReadOnly(), reset);
     }
+
+    public LogState GetState() { lock (_gate) return State(); }
+    private LogState State() => new(_id, _revision, _sequence - _count + 1, _sequence,
+        _count, _used, _buffer.Length);
 
     public LogStatistics GetStatistics()
     {
@@ -202,53 +191,31 @@ public sealed class InMemoryLogJournal : ILogJournal
     {
         lock (_gate)
         {
-            _cleared += _sequence - _discardedThrough;
-            _discardedThrough = _sequence;
-            _head = _used = _count = _lastLength = 0;
+            _cleared += _count;
+            _head = _used = _count = 0;
+            _revision++;
             Array.Clear(_buffer);
             Array.Clear(_scratch);
         }
+        NotifyChanged();
     }
 
-    private LogEntry Decode(Header header)
+    private void NotifyChanged()
     {
-        using var stream = new MemoryStream(_scratch, 0, header.Length - HeaderSize, writable: false);
-        using var reader = new BinaryReader(stream, Encoding.UTF8);
-        var level = (LogLevel)reader.ReadByte();
-        var eventId = reader.ReadInt32();
-        var truncated = reader.ReadBoolean();
-        var category = reader.ReadString();
-        var name = reader.ReadString();
-        var message = reader.ReadString();
-        var exception = reader.ReadString();
-        var count = reader.ReadByte();
-        var properties = new Dictionary<string, string?>(count, StringComparer.Ordinal);
-        for (var i = 0; i < count; i++)
+        var handlers = Changed;
+        if (handlers is null) return;
+        foreach (Action handler in handlers.GetInvocationList())
         {
-            var key = reader.ReadString();
-            properties.Add(key, reader.ReadBoolean() ? reader.ReadString() : null);
+            try { handler(); }
+            catch (Exception error) when (error is not OutOfMemoryException) { }
         }
-
-        return new(header.FirstSequence, header.LastSequence,
-            new DateTimeOffset(header.FirstTicks, TimeSpan.Zero), new DateTimeOffset(header.LastTicks, TimeSpan.Zero),
-            header.Repeats, level, category, message, new EventId(eventId, name.Length == 0 ? null : name),
-            exception.Length == 0 ? null : exception, new ReadOnlyDictionary<string, string?>(properties), truncated);
     }
 
-    private static bool Matches(LogEntry entry, LogQuery query) =>
-        entry.Level >= query.MinimumLevel
-        && (query.Category is null || entry.Category == query.Category)
-        && (query.Text is null || entry.Message.Contains(query.Text, StringComparison.OrdinalIgnoreCase)
-            || (entry.Exception?.Contains(query.Text, StringComparison.OrdinalIgnoreCase) ?? false))
-        && (query.Properties is null || query.Properties.All(pair =>
-            entry.Properties.TryGetValue(pair.Key, out var value) && value == pair.Value));
-
-    private bool PayloadEquals(int offset, ReadOnlySpan<byte> data)
+    private int ReadLength(int offset)
     {
-        offset %= _buffer.Length;
-        var first = Math.Min(data.Length, _buffer.Length - offset);
-        return data[..first].SequenceEqual(_buffer.AsSpan(offset, first))
-            && data[first..].SequenceEqual(_buffer.AsSpan(0, data.Length - first));
+        Span<byte> bytes = stackalloc byte[4];
+        CopyOut(offset, bytes);
+        return BinaryPrimitives.ReadInt32LittleEndian(bytes);
     }
 
     private void CopyIn(int offset, ReadOnlySpan<byte> data)
@@ -266,29 +233,4 @@ public sealed class InMemoryLogJournal : ILogJournal
         _buffer.AsSpan(offset, first).CopyTo(destination);
         _buffer.AsSpan(0, destination.Length - first).CopyTo(destination[first..]);
     }
-
-    private Header ReadHeader(int offset)
-    {
-        Span<byte> bytes = stackalloc byte[HeaderSize];
-        CopyOut(offset, bytes);
-        return new(BinaryPrimitives.ReadInt32LittleEndian(bytes),
-            BinaryPrimitives.ReadInt64LittleEndian(bytes[4..]), BinaryPrimitives.ReadInt64LittleEndian(bytes[12..]),
-            BinaryPrimitives.ReadInt64LittleEndian(bytes[20..]), BinaryPrimitives.ReadInt64LittleEndian(bytes[28..]),
-            BinaryPrimitives.ReadInt64LittleEndian(bytes[36..]));
-    }
-
-    private void WriteHeader(int offset, Header value)
-    {
-        Span<byte> bytes = stackalloc byte[HeaderSize];
-        BinaryPrimitives.WriteInt32LittleEndian(bytes, value.Length);
-        BinaryPrimitives.WriteInt64LittleEndian(bytes[4..], value.FirstSequence);
-        BinaryPrimitives.WriteInt64LittleEndian(bytes[12..], value.LastSequence);
-        BinaryPrimitives.WriteInt64LittleEndian(bytes[20..], value.FirstTicks);
-        BinaryPrimitives.WriteInt64LittleEndian(bytes[28..], value.LastTicks);
-        BinaryPrimitives.WriteInt64LittleEndian(bytes[36..], value.Repeats);
-        CopyIn(offset, bytes);
-    }
-
-    private readonly record struct Header(int Length, long FirstSequence, long LastSequence,
-        long FirstTicks, long LastTicks, long Repeats);
 }

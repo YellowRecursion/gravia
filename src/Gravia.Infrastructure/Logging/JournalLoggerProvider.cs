@@ -6,9 +6,10 @@ namespace Gravia.Infrastructure.Logging;
 
 /// <summary>Standard ILogger adapter. Filtering is handled by LoggerFactory before formatting.</summary>
 [ProviderAlias("Gravia")]
-public sealed class JournalLoggerProvider(ILogJournal journal) : ILoggerProvider, ISupportExternalScope
+public sealed class JournalLoggerProvider(ILogJournal journal, SessionFileLog? fileLog = null) : ILoggerProvider, ISupportExternalScope
 {
     private readonly ILogJournal _journal = journal;
+    private readonly SessionFileLog? _fileLog = fileLog;
     private IExternalScopeProvider _scopes = new LoggerExternalScopeProvider();
 
     public ILogger CreateLogger(string categoryName) => new JournalLogger(this, categoryName);
@@ -41,8 +42,10 @@ public sealed class JournalLoggerProvider(ILogJournal journal) : ILoggerProvider
                 AddProperties(state, properties, ref truncated);
                 var exceptionText = FormatException(exception, ref truncated);
                 // Store only rendered strings, never caller objects, exceptions or scope references.
-                owner._journal.TryWrite(new LogMessage(logLevel, category, formatter(state, exception), eventId,
-                    exceptionText, properties, truncated));
+                var message = new LogMessage(logLevel, category, formatter(state, exception), eventId,
+                    exceptionText, properties, truncated);
+                owner._fileLog?.TryWrite(message);
+                owner._journal.TryWrite(message);
             }
             catch (Exception error) when (error is not OutOfMemoryException)
             {
@@ -50,8 +53,10 @@ public sealed class JournalLoggerProvider(ILogJournal journal) : ILoggerProvider
                 // No ILogger recursion: emit a bounded fallback directly, best effort for replaceable sinks.
                 try
                 {
-                    owner._journal.TryWrite(new LogMessage(LogLevel.Warning, category,
-                        "A log entry could not be formatted or stored.", new EventId(0, "LoggingFailure")));
+                    var fallback = new LogMessage(LogLevel.Warning, category,
+                        "A log entry could not be formatted or stored.", new EventId(0, "LoggingFailure"));
+                    owner._fileLog?.TryWrite(fallback);
+                    owner._journal.TryWrite(fallback);
                 }
                 catch (Exception fallbackError) when (fallbackError is not OutOfMemoryException) { }
             }
@@ -80,12 +85,8 @@ public sealed class JournalLoggerProvider(ILogJournal journal) : ILoggerProvider
         private static string? FormatException(Exception? exception, ref bool truncated)
         {
             if (exception is null) return null;
-            // Deliberately avoid recursive Exception.ToString() and retain no exception object.
-            var type = LogText.Limit(exception.GetType().FullName ?? "Exception", 256, ref truncated);
-            var message = LogText.Limit(exception.Message, 1024, ref truncated);
-            var stack = LogText.Limit(exception.StackTrace ?? "", 2048, ref truncated);
-            return type + ": " + message + Environment.NewLine + stack
-                + (truncated ? Environment.NewLine + "[truncated]" : "");
+            // Includes inner/aggregate exceptions. No exception reference escapes the synchronous call.
+            return LogText.Limit(exception.ToString(), 32768, ref truncated);
         }
     }
 }
