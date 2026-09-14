@@ -1,4 +1,5 @@
 using System.Net;
+using ActualLab.Rpc.Server;
 using Gravia.Infrastructure.Logging;
 using Gravia.Host.Errors;
 using Microsoft.Extensions.FileProviders;
@@ -27,6 +28,7 @@ public static class DesktopHost
         builder.Services.AddSingleton(desktop);
         var app = builder.Build();
         app.UseMiddleware<HttpExceptionMiddleware>();
+        app.UseWebSockets();
         app.Use(async (context, next) =>
         {
             // Ant/React Flow use dynamic styles and inline positioning. Scripts stay same-origin only.
@@ -46,6 +48,7 @@ public static class DesktopHost
             app.UseStaticFiles(new StaticFileOptions { FileProvider = files });
         }
         app.MapGet("/", () => Results.File(Path.Combine(webRoot, "index.html"), "text/html"));
+        app.MapRpcWebSocketServer();
         return app;
     }
 

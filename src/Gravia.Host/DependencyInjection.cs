@@ -1,3 +1,6 @@
+using ActualLab.Fusion;
+using ActualLab.Fusion.Server;
+using ActualLab.Rpc;
 using Gravia.Application;
 using Gravia.Infrastructure;
 using Gravia.Host.Errors;
@@ -12,6 +15,7 @@ public static class DependencyInjection
     {
         services.AddApplicationServices();
         services.AddInfrastructureServices();
+        services.AddFusion(RpcServiceMode.Server).AddWebServer();
         services.TryAddSingleton<ExceptionHandler>();
 
         return services;

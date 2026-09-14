@@ -14,6 +14,9 @@
     <Content Include="../Gravia.Desktop/*.cjs;../Gravia.Desktop/package.json"
              Link="Desktop/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="ActualLab.Fusion.Server" Version="14.4.11" />
+  </ItemGroup>
   <Target Name="RestoreDesktop"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(SkipDesktopRestore)' != 'true'"
           Inputs="$(MSBuildProjectDirectory)/../Gravia.Desktop/package.json;$(MSBuildProjectDirectory)/../Gravia.Desktop/package-lock.json"

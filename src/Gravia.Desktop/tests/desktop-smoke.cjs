@@ -80,6 +80,8 @@ async function scenario(action) {
     assert.equal(state.mounted, true);
     assert.equal(state.content, '');
     assert.deepEqual(state.rendererErrors, []);
+    assert.equal(state.rpcHandshakeSent, true);
+    assert.equal(state.rpcHandshakeReceived, true);
     assert.equal(state.nodeAvailable, false);
     assert.equal(state.visible, true);
     assert.equal(state.sandbox, true);
