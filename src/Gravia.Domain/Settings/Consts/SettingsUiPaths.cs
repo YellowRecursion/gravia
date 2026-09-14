@@ -8,6 +8,6 @@ namespace Gravia.Domain.Settings.Consts;
 public static class SettingsUiPaths
 {
     public static SettingsUiPath Appearance { get; } = new(
-        new LocalizedText(GraviaLanguages.English, "Appearance")
-            .With(GraviaLanguages.Russian, "Внешний вид"));
+        new LocalizedText(Langs.English, "Appearance")
+            .With(Langs.Russian, "Внешний вид"));
 }

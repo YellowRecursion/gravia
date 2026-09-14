@@ -2,6 +2,7 @@ using FluentValidation;
 using Gravia.Application.Common.Behaviors;
 using Gravia.Application.Common.Events;
 using Gravia.Application.Settings;
+using Gravia.Application.Settings.Services;
 using Gravia.Application.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

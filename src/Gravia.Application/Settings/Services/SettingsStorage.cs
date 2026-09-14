@@ -1,13 +1,15 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using Gravia.Application.Settings.Events;
 using Gravia.Application.Storage;
 using Gravia.Domain.Common;
+using Gravia.Domain.Common.Events;
 using Gravia.Domain.Settings.Entities;
 using Gravia.Domain.Settings.Interfaces;
 using Microsoft.Extensions.Logging;
 
-namespace Gravia.Application.Settings;
+namespace Gravia.Application.Settings.Services;
 
 /// <summary>Registers settings and persists their values using an existing data store.</summary>
 /// <remarks>Use one instance per store. Dispose after pending events finish. Does not own the data store.</remarks>
@@ -65,6 +67,7 @@ public abstract class SettingsStorage(IDataStore dataStore, ILogger logger) : ID
                 _settings[setting.Id] = setting;
                 if (previous is not null && !ReferenceEquals(previous, setting))
                     Owners.Remove(previous);
+                new SettingsRegistrationChanged(this, setting.Id).Raise();
             }
             catch
             {
@@ -89,10 +92,15 @@ public abstract class SettingsStorage(IDataStore dataStore, ILogger logger) : ID
             await dataStore.SaveAsync(FileName, values, cancellationToken);
             _settings.TryRemove(id, out _);
             Owners.Remove(setting);
+            new SettingsRegistrationChanged(this, id).Raise();
         }
         finally { _gate.Release(); }
     }
 
+    public ISetting? Find(string id) => _settings.GetValueOrDefault(id);
+    
+    public bool Contains(ISetting setting) => ReferenceEquals(Find(setting.Id), setting);
+    
     internal static SettingsStorage? FindOwner(ISetting setting)
         => Owners.TryGetValue(setting, out var owner) ? owner : null;
 

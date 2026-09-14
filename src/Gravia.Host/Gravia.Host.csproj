@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="ActualLab.Fusion.Server" Version="14.4.11" />
+    <PackageReference Include="ActualLab.Generators" Version="14.4.11" PrivateAssets="all" />
   </ItemGroup>
   <Target Name="RestoreDesktop"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(SkipDesktopRestore)' != 'true'"

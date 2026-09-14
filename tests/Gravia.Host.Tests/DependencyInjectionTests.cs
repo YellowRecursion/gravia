@@ -1,3 +1,4 @@
+using ActualLab.Fusion;
 using Gravia.Application.Common.Behaviors;
 using Gravia.Application.Logging;
 using Gravia.Application.Storage;
@@ -12,6 +13,26 @@ namespace Gravia.Host.Tests;
 
 public sealed class DependencyInjectionTests
 {
+    [Fact]
+    public void AllHostFusionServicesAreRegistered()
+    {
+        var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder(
+            new HostApplicationBuilderSettings { DisableDefaults = true });
+        builder.Services.AddHostServices();
+        using var host = builder.Build();
+
+        var serviceTypes = typeof(DependencyInjection).Assembly.DefinedTypes
+            .Where(type => type is { IsClass: true, IsAbstract: false, ContainsGenericParameters: false })
+            .Where(type => type.GetInterfaces()
+                .Except(type.BaseType?.GetInterfaces() ?? [])
+                .Contains(typeof(IComputeService)))
+            .ToArray();
+
+        Assert.NotEmpty(serviceTypes);
+        foreach (var serviceType in serviceTypes)
+            Assert.NotNull(host.Services.GetRequiredService(serviceType));
+    }
+
     [Fact]
     public async Task HostBuildsStartsAndStopsWithApplicationServices()
     {

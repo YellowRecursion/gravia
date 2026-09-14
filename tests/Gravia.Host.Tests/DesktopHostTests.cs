@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.WebSockets;
 using System.Text.Json;
 using FluentValidation;
 using FluentValidation.Results;
@@ -13,6 +14,36 @@ namespace Gravia.Host.Tests;
 
 public sealed class DesktopHostTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RpcAcceptsOwnUiButRejectsOtherWebsites(bool sameOrigin)
+    {
+        await using var app = DesktopHost.Build(["--Desktop:Enabled=false"]);
+        await app.StartAsync();
+        using var socket = new ClientWebSocket();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            var address = new Uri(app.Urls.Single());
+            socket.Options.SetRequestHeader("Origin", sameOrigin
+                ? address.GetLeftPart(UriPartial.Authority) : "https://example.com");
+            var endpoint = new UriBuilder(address) { Scheme = "ws", Path = "/rpc/ws", Query = "f=json5np" }.Uri;
+            if (sameOrigin)
+            {
+                await socket.ConnectAsync(endpoint, timeout.Token);
+                Assert.Equal(WebSocketState.Open, socket.State);
+            }
+            else
+                await Assert.ThrowsAsync<WebSocketException>(() => socket.ConnectAsync(endpoint, timeout.Token));
+        }
+        finally
+        {
+            socket.Abort();
+            await app.StopAsync();
+        }
+    }
+
     [Fact]
     public async Task ServesOnlyBlankShellOnDynamicLoopbackPort()
     {

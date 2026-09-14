@@ -19,6 +19,11 @@ public interface ISetting
     /// <summary>Serializes the current value only, without setting metadata.</summary>
     JsonElement SerializeValue();
 
+    JsonElement SerializeDefaultValue();
+
+    /// <summary>Assigns a serialized value and raises a change event.</summary>
+    void SetSerializedValue(JsonElement value);
+
     /// <summary>Deserializes and assigns a value without notification. Deserialization failure leaves the current value unchanged.</summary>
     void DeserializeValue(JsonElement value);
 }

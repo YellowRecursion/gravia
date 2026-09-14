@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Gravia.Application.Settings;
+namespace Gravia.Application.Settings.Services;
 
 /// <summary>Application-wide settings, initialized when the host starts.</summary>
 public sealed class ApplicationSettings(
@@ -16,13 +16,13 @@ public sealed class ApplicationSettings(
 {
     public StringSetting Language { get; } = new(
         "gravia.language",
-        new LocalizedText(GraviaLanguages.English, "Language").With(GraviaLanguages.Russian, "Язык"),
-        GraviaLanguages.Russian,
+        new LocalizedText(Langs.English, "Language").With(Langs.Russian, "Язык"),
+        Langs.Russian,
         SettingsUiPaths.Appearance);
 
     public StringSetting Theme { get; } = new(
         "gravia.theme",
-        new LocalizedText(GraviaLanguages.English, "Theme").With(GraviaLanguages.Russian, "Тема"),
+        new LocalizedText(Langs.English, "Theme").With(Langs.Russian, "Тема"),
         "system",
         SettingsUiPaths.Appearance);
 

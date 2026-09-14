@@ -1,7 +1,8 @@
+using Gravia.Application.Settings.Services;
 using Gravia.Domain.Settings.Events;
 using MediatR;
 
-namespace Gravia.Application.Settings.Events;
+namespace Gravia.Application.Settings.EventHandlers;
 
 /// <summary>Saves the setting through the storage that registered it.</summary>
 public sealed class SettingChangedHandler : INotificationHandler<SettingChanged>

@@ -1,4 +1,3 @@
-using Gravia.Domain.Localization;
 using Gravia.Domain.Localization.Consts;
 using Gravia.Domain.Localization.Entities;
 
@@ -7,11 +6,10 @@ namespace Gravia.Domain.Tests.Localization;
 public sealed class LocalizedTextTests
 {
     [Fact]
-    public void ConstructorStoresTheDefaultTranslation()
+    public void ConstructorStoresTranslation()
     {
         var text = new LocalizedText("en", "Temperature");
 
-        Assert.Equal("en", text.DefaultLanguage);
         Assert.Equal(new KeyValuePair<string, string>("en", "Temperature"), Assert.Single(text.Translations));
         Assert.Equal("Temperature", text.Resolve("en"));
     }
@@ -25,7 +23,6 @@ public sealed class LocalizedTextTests
         Assert.NotSame(original, translated);
         Assert.Single(original.Translations);
         Assert.False(original.Translations.ContainsKey("ru"));
-        Assert.Equal("en", translated.DefaultLanguage);
         Assert.Equal(2, translated.Translations.Count);
         Assert.Equal("Temperature", translated.Resolve("en"));
         Assert.Equal("Температура", translated.Resolve("ru"));
@@ -40,19 +37,17 @@ public sealed class LocalizedTextTests
         Assert.Equal(2, updated.Translations.Count);
         Assert.Equal("Температура", updated.Resolve("ru"));
         Assert.Equal("Темп.", original.Resolve("ru"));
-        Assert.Equal("en", updated.DefaultLanguage);
     }
 
     [Fact]
-    public void ReplacingDefaultTranslationAlsoUpdatesFallback()
+    public void WithCanReplaceAnExistingTranslation()
     {
         var original = new LocalizedText("en", "Old");
         var updated = original.With("EN", "New");
 
         Assert.Single(updated.Translations);
-        Assert.Equal("en", updated.DefaultLanguage);
-        Assert.Equal("New", updated.Resolve("vi"));
-        Assert.Equal("Old", original.Resolve("vi"));
+        Assert.Equal("New", updated.Resolve("en"));
+        Assert.Equal("Old", original.Resolve("en"));
     }
 
     [Theory]
@@ -63,7 +58,7 @@ public sealed class LocalizedTextTests
     {
         var text = new LocalizedText("vi", "Nhiệt độ");
 
-        Assert.DoesNotContain("vi", GraviaLanguages.Supported);
+        Assert.DoesNotContain("vi", Langs.Supported);
         Assert.Equal("Nhiệt độ", text.Resolve(language));
     }
 
@@ -78,14 +73,24 @@ public sealed class LocalizedTextTests
     }
 
     [Fact]
-    public void RegionalVariantsAreNotInferred()
+    public void MissingRegionalVariantsUseTheAvailableFallback()
     {
         var text = new LocalizedText("vi", "Nhiệt độ")
             .With("en", "Temperature")
             .With("pt-BR", "Temperatura");
+        var fallback = text.Translations.First().Value;
 
-        Assert.Equal("Nhiệt độ", text.Resolve("en-US"));
-        Assert.Equal("Nhiệt độ", text.Resolve("pt"));
+        Assert.Equal(fallback, text.Resolve("en-US"));
+        Assert.Equal(fallback, text.Resolve("pt"));
+    }
+
+    [Fact]
+    public void ConstructorWithoutLanguageMarksTranslationAsUnknown()
+    {
+        var text = new LocalizedText("Nhiệt độ");
+
+        Assert.Equal("Nhiệt độ", text.Translations[Langs.Unknown]);
+        Assert.Equal("Nhiệt độ", text.Resolve("ru"));
     }
 
     [Theory]

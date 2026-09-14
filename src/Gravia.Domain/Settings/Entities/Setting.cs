@@ -55,6 +55,15 @@ public abstract class Setting<T> : ISetting
         return JsonSerializer.SerializeToElement(Value);
     }
 
+    public virtual JsonElement SerializeDefaultValue()
+        => JsonSerializer.SerializeToElement(DefaultValue);
+
+    void ISetting.SetSerializedValue(JsonElement value)
+    {
+        DeserializeValue(value);
+        new SettingChanged(this).Raise();
+    }
+
     /// <summary>Deserializes and assigns a value without notification. Deserialization failure leaves the current value unchanged.</summary>
     public virtual void DeserializeValue(JsonElement value)
     {
