@@ -1,4 +1,5 @@
-using Gravia.Host.Errors;
+using System.Diagnostics;
+using Gravia.Domain.Common;
 
 namespace Gravia.Host;
 
@@ -9,11 +10,11 @@ namespace Gravia.Host;
 public static class HostProcess
 {
     public static async Task<int> RunAsync(Func<CancellationToken, Task> run,
-        ExceptionHandler exceptionHandler, TextWriter errorOutput,
+        ILogger logger, TextWriter errorOutput,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(run);
-        ArgumentNullException.ThrowIfNull(exceptionHandler);
+        ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(errorOutput);
 
         try
@@ -22,16 +23,36 @@ public static class HostProcess
             await run(cancellationToken);
             return 0;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return 0;
+        }
+        catch (DomainException exception)
+        {
+            return await WriteFailure(exception.Code, exception.Message, CreateTraceId());
+        }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
-            var error = exceptionHandler.Handle(exception, cancellationToken);
-            if (error.Kind == ErrorKind.Cancelled) return 0;
+            var traceId = CreateTraceId();
+            try
+            {
+                logger.LogError(exception, "Unexpected process failure. TraceId: {TraceId}", traceId);
+            }
+            catch (Exception loggingFailure) when (loggingFailure is not OutOfMemoryException)
+            {
+                // Best effort: process failure must still produce a nonzero exit code.
+            }
 
+            return await WriteFailure("internal_error", "An internal error occurred.", traceId);
+        }
+
+        async Task<int> WriteFailure(string code, string message, string traceId)
+        {
             // No raw exception message, request payload or Extra in process output.
             // The process boundary terminates; it must not pretend a failed startup succeeded.
             try
             {
-                await errorOutput.WriteLineAsync($"{error.Code}: {error.Message} (traceId: {error.TraceId})");
+                await errorOutput.WriteLineAsync($"{code}: {message} (traceId: {traceId})");
             }
             catch (Exception outputFailure) when (outputFailure is not OutOfMemoryException)
             {
@@ -40,4 +61,7 @@ public static class HostProcess
             return 1;
         }
     }
+
+    private static string CreateTraceId()
+        => Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString("N");
 }

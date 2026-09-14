@@ -1,7 +1,6 @@
 using System.Net;
 using ActualLab.Rpc.Server;
 using Gravia.Infrastructure.Logging;
-using Gravia.Host.Errors;
 using Microsoft.Extensions.FileProviders;
 
 namespace Gravia.Host.Desktop;
@@ -12,7 +11,8 @@ public static class DesktopHost
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
-            Args = args, ContentRootPath = AppContext.BaseDirectory
+            Args = args,
+            ContentRootPath = AppContext.BaseDirectory
         });
         // No public listener, fixed port, certificate setup or CORS needed for this local shell.
         builder.WebHost.ConfigureKestrel(server =>
@@ -27,7 +27,6 @@ public static class DesktopHost
         desktop.AppDirectory = Path.GetFullPath(desktop.AppDirectory);
         builder.Services.AddSingleton(desktop);
         var app = builder.Build();
-        app.UseMiddleware<HttpExceptionMiddleware>();
         app.UseWebSockets();
         app.Use(async (context, next) =>
         {

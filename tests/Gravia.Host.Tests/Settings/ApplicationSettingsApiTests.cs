@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ActualLab.Fusion;
+using FluentValidation;
 using Gravia.Application.Settings;
 using Gravia.Application.Settings.Services;
 using Gravia.Application.Storage;
@@ -30,7 +31,7 @@ public sealed class ApplicationSettingsApiTests : IAsyncLifetime
         services.AddKeyedSingleton<IDataStore>(DataStoreKey.Application, _data);
         services.AddTransient<INotificationHandler<QueueBarrier>, QueueBarrierHandler>();
         _provider = services.BuildServiceProvider(new ServiceProviderOptions
-            { ValidateScopes = true, ValidateOnBuild = true });
+        { ValidateScopes = true, ValidateOnBuild = true });
         _settings = _provider.GetRequiredService<ApplicationSettings>();
         _api = _provider.GetRequiredService<ApplicationSettingsApi>();
         foreach (var service in _provider.GetServices<IHostedService>())
@@ -52,19 +53,19 @@ public sealed class ApplicationSettingsApiTests : IAsyncLifetime
         var catalog = await Computed.Capture(() => _api.GetAll());
         var theme = await Computed.Capture(() => _api.Get("gravia.theme"));
         var language = await Computed.Capture(() => _api.Get("gravia.language"));
-        var summary = Assert.Single(catalog.Value, item => item.Id == "gravia.theme");
+        var summary = Assert.Single(catalog.Value.Data!, item => item.Id == "gravia.theme");
         Assert.Equal("Тема", summary.Title.Translations["ru"]);
         Assert.NotEmpty(summary.UiPath);
-        Assert.DoesNotContain("\"Value\"", JsonSerializer.Serialize(catalog.Value));
+        Assert.DoesNotContain("\"Value\"", JsonSerializer.Serialize(catalog.Value.Data));
 
-        Assert.Null(await _api.SetValue("gravia.theme", JsonSerializer.SerializeToElement("dark")));
+        Assert.True((await _api.SetValue("gravia.theme", JsonSerializer.SerializeToElement("dark"))).IsSuccess);
         await Drain();
         Assert.Equal(ConsistencyState.Invalidated, theme.ConsistencyState);
         Assert.Equal(ConsistencyState.Consistent, catalog.ConsistencyState);
         Assert.Equal(ConsistencyState.Consistent, language.ConsistencyState);
-        Assert.Equal("dark", (await _api.Get("gravia.theme"))!.Value.GetString());
+        Assert.Equal("dark", (await _api.Get("gravia.theme")).Data!.Value.GetString());
         Assert.Equal("dark", _data.Value("gravia.theme").GetString());
-        Assert.Equal("system", theme.Value!.Value.GetString()); // Old DTO is a snapshot.
+        Assert.Equal("system", theme.Value.Data!.Value.GetString()); // Old DTO is a snapshot.
 
         theme = await Computed.Capture(() => _api.Get("gravia.theme"));
         _settings.Theme.SetValue("light"); // No RPC call: the same invalidation path must work.
@@ -72,9 +73,9 @@ public sealed class ApplicationSettingsApiTests : IAsyncLifetime
         Assert.Equal(ConsistencyState.Invalidated, theme.ConsistencyState);
         Assert.Equal("light", _data.Value("gravia.theme").GetString());
 
-        Assert.Null(await _api.ResetValue("gravia.theme"));
+        Assert.True((await _api.ResetValue("gravia.theme")).IsSuccess);
         await Drain();
-        Assert.Equal("system", (await _api.Get("gravia.theme"))!.Value.GetString());
+        Assert.Equal("system", (await _api.Get("gravia.theme")).Data!.Value.GetString());
         Assert.Equal("system", _data.Value("gravia.theme").GetString());
     }
 
@@ -83,20 +84,20 @@ public sealed class ApplicationSettingsApiTests : IAsyncLifetime
     {
         var catalog = await Computed.Capture(() => _api.GetAll());
         var detail = await Computed.Capture(() => _api.Get("example.count"));
-        Assert.Null(detail.Value);
+        Assert.Null(detail.Value.Data);
         await _settings.Register(new IntSetting("example.count", new LocalizedText("vi", "Count"),
             10, SettingsUiPaths.Appearance, new LocalizedText("vi", "Description")));
         await Drain();
         Assert.Equal(ConsistencyState.Invalidated, catalog.ConsistencyState);
         Assert.Equal(ConsistencyState.Invalidated, detail.ConsistencyState);
-        Assert.Equal(10, (await _api.Get("example.count"))!.DefaultValue.GetInt32());
+        Assert.Equal(10, (await _api.Get("example.count")).Data!.DefaultValue.GetInt32());
 
         catalog = await Computed.Capture(() => _api.GetAll());
         await _settings.Register(new IntSetting("example.count", new LocalizedText("en", "Renamed"),
             20, SettingsUiPaths.Appearance));
         await Drain();
         Assert.Equal(ConsistencyState.Invalidated, catalog.ConsistencyState);
-        Assert.Equal(10, (await _api.Get("example.count"))!.Value.GetInt32());
+        Assert.Equal(10, (await _api.Get("example.count")).Data!.Value.GetInt32());
 
         catalog = await Computed.Capture(() => _api.GetAll());
         detail = await Computed.Capture(() => _api.Get("example.count"));
@@ -104,19 +105,19 @@ public sealed class ApplicationSettingsApiTests : IAsyncLifetime
         await Drain();
         Assert.Equal(ConsistencyState.Invalidated, catalog.ConsistencyState);
         Assert.Equal(ConsistencyState.Invalidated, detail.ConsistencyState);
-        Assert.Null(await _api.Get("example.count"));
+        Assert.Null((await _api.Get("example.count")).Data);
         Assert.Equal(10, _data.Value("example.count").GetInt32());
     }
 
     [Fact]
-    public async Task InvalidInputReturnsStructuredErrorsWithoutChangingValue()
+    public async Task InvalidInputThrowsValidationExceptionWithoutChangingValue()
     {
         var theme = await Computed.Capture(() => _api.Get("gravia.theme"));
-        var error = await _api.SetValue("gravia.theme", JsonSerializer.SerializeToElement(123));
-        Assert.Equal("validation_failed", error!.Code);
-        Assert.Equal("invalid_setting_value", Assert.Single(error.Errors).Code);
-        error = await _api.ResetValue("missing");
-        Assert.Equal("setting_not_found", Assert.Single(error!.Errors).Code);
+        var error = await Assert.ThrowsAsync<ValidationException>(() =>
+            _api.SetValue("gravia.theme", JsonSerializer.SerializeToElement(123)));
+        Assert.Equal("invalid_setting_value", Assert.Single(error.Errors).ErrorCode);
+        error = await Assert.ThrowsAsync<ValidationException>(() => _api.ResetValue("missing"));
+        Assert.Equal("setting_not_found", Assert.Single(error.Errors).ErrorCode);
         await Drain();
         Assert.Equal(ConsistencyState.Consistent, theme.ConsistencyState);
         Assert.Equal("system", _settings.Theme.Value);

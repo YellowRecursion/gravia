@@ -1,7 +1,7 @@
 using Gravia.Application.Logging;
 using Gravia.Domain.Common;
-using Gravia.Host.Errors;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Gravia.Host.Tests;
 
@@ -17,7 +17,7 @@ public sealed class HostProcessTests
         {
             called = true;
             return Task.CompletedTask;
-        }, services.GetRequiredService<ExceptionHandler>(), output);
+        }, CreateLogger(services), output);
 
         Assert.True(called);
         Assert.Equal(0, exitCode);
@@ -33,7 +33,7 @@ public sealed class HostProcessTests
         using var output = new StringWriter();
         var error = new InvalidOperationException("Private technical detail");
         var exitCode = await HostProcess.RunAsync(_ => asynchronous ? Task.FromException(error) : throw error,
-            services.GetRequiredService<ExceptionHandler>(), output);
+            CreateLogger(services), output);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("internal_error", output.ToString());
@@ -48,7 +48,7 @@ public sealed class HostProcessTests
         using var services = new ServiceCollection().AddHostServices().BuildServiceProvider();
         using var output = new StringWriter();
         var exitCode = await HostProcess.RunAsync(_ => throw new RuleException(),
-            services.GetRequiredService<ExceptionHandler>(), output);
+            CreateLogger(services), output);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("test_rule_rejected", output.ToString());
@@ -67,7 +67,7 @@ public sealed class HostProcessTests
         {
             called = true;
             return Task.CompletedTask;
-        }, services.GetRequiredService<ExceptionHandler>(), output, cancellation.Token);
+        }, CreateLogger(services), output, cancellation.Token);
 
         Assert.Equal(0, exitCode);
         Assert.False(called);
@@ -81,7 +81,7 @@ public sealed class HostProcessTests
         using var services = new ServiceCollection().AddHostServices().BuildServiceProvider();
         using var output = new StringWriter();
         var exitCode = await HostProcess.RunAsync(_ => throw new OperationCanceledException(),
-            services.GetRequiredService<ExceptionHandler>(), output);
+            CreateLogger(services), output);
         Assert.Equal(1, exitCode);
         Assert.Contains("internal_error", output.ToString());
     }
@@ -95,7 +95,7 @@ public sealed class HostProcessTests
         {
             using var resource = new BrokenResource();
             return Task.CompletedTask;
-        }, services.GetRequiredService<ExceptionHandler>(), output);
+        }, CreateLogger(services), output);
         Assert.Equal(1, exitCode);
         Assert.Single(services.GetRequiredService<ILogJournal>().Read().Entries);
     }
@@ -106,11 +106,14 @@ public sealed class HostProcessTests
         using var services = new ServiceCollection().AddHostServices().BuildServiceProvider();
         using var output = new BrokenWriter();
         var exitCode = await HostProcess.RunAsync(_ => throw new Exception("Failure"),
-            services.GetRequiredService<ExceptionHandler>(), output);
+            CreateLogger(services), output);
         Assert.Equal(1, exitCode);
     }
 
     private sealed class RuleException() : DomainException("test_rule_rejected", "Safe explanation.");
+
+    private static ILogger CreateLogger(IServiceProvider services)
+        => services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(HostProcess));
 
     private sealed class BrokenResource : IDisposable
     {

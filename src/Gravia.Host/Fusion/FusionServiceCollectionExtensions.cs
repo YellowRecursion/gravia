@@ -11,6 +11,7 @@ public static class FusionServiceCollectionExtensions
     public static IServiceCollection AddFusionServices(this IServiceCollection services)
     {
         var fusion = services.AddFusion(RpcServiceMode.Server);
+        fusion.Rpc.AddMiddleware<RpcExceptionMiddleware>();
         fusion.AddWebServer();
 
         var serviceTypes = typeof(FusionServiceCollectionExtensions).Assembly.DefinedTypes
@@ -22,7 +23,7 @@ public static class FusionServiceCollectionExtensions
             fusion.AddService(serviceType);
 
         services.AddSingleton(RpcWebSocketServerOptions.Default with
-            { OriginValidator = RpcWebSocketServerOriginValidators.SameOrigin });
+        { OriginValidator = RpcWebSocketServerOriginValidators.SameOrigin });
 
         return services;
     }

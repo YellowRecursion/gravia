@@ -1,9 +1,12 @@
 using ActualLab.Fusion;
+using ActualLab.Rpc;
+using ActualLab.Rpc.Middlewares;
 using Gravia.Application.Common.Behaviors;
 using Gravia.Application.Logging;
 using Gravia.Application.Storage;
 using Gravia.Infrastructure.Logging;
 using Gravia.Infrastructure.Storage;
+using Gravia.Host.Fusion;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -30,7 +33,19 @@ public sealed class DependencyInjectionTests
 
         Assert.NotEmpty(serviceTypes);
         foreach (var serviceType in serviceTypes)
+        {
             Assert.NotNull(host.Services.GetRequiredService(serviceType));
+            foreach (var method in serviceType.DeclaredMethods.Where(method => method.IsPublic))
+            {
+                Assert.True(method.ReturnType.IsGenericType, method.ToString());
+                Assert.Contains(method.ReturnType.GetGenericTypeDefinition(),
+                    new[] { typeof(Task<>), typeof(ValueTask<>) });
+                Assert.True(typeof(RpcResult).IsAssignableFrom(method.ReturnType.GenericTypeArguments[0]),
+                    method.ToString());
+            }
+        }
+
+        Assert.Single(host.Services.GetServices<IRpcMiddleware>().OfType<RpcExceptionMiddleware>());
     }
 
     [Fact]
