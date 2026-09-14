@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Gravia.Application.Tests.Common.Events;
 
+[Collection("Domain events")]
 public sealed class DomainEventDispatcherTests
 {
     [Fact]
