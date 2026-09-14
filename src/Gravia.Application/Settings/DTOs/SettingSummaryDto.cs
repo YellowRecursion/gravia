@@ -12,7 +12,7 @@ public sealed record SettingSummaryDto(
 
 public static class SettingSummaryMapping
 {
-    public static SettingSummaryDto ToDto(this ISetting setting) => new(
+    public static SettingSummaryDto ToSummaryDto(this ISetting setting) => new(
         setting.Id,
         setting.Title.ToDto(),
         setting.Description?.ToDto(),

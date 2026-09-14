@@ -5,6 +5,7 @@ using Gravia.Application.Settings;
 using Gravia.Application.Settings.Services;
 using Gravia.Application.Storage;
 using Gravia.Domain.Common.Events;
+using Gravia.Domain.CommonExceptions;
 using Gravia.Domain.Localization.Entities;
 using Gravia.Domain.Settings.Consts;
 using Gravia.Domain.Settings.Entities;
@@ -116,8 +117,9 @@ public sealed class ApplicationSettingsApiTests : IAsyncLifetime
         var error = await Assert.ThrowsAsync<ValidationException>(() =>
             _api.SetValue("gravia.theme", JsonSerializer.SerializeToElement(123)));
         Assert.Equal("invalid_setting_value", Assert.Single(error.Errors).ErrorCode);
-        error = await Assert.ThrowsAsync<ValidationException>(() => _api.ResetValue("missing"));
-        Assert.Equal("setting_not_found", Assert.Single(error.Errors).ErrorCode);
+        var notFound = await Assert.ThrowsAsync<NotFoundException>(() => _api.ResetValue("missing"));
+        Assert.Equal("not_found", notFound.Code);
+        Assert.Empty(notFound.Extra);
         await Drain();
         Assert.Equal(ConsistencyState.Consistent, theme.ConsistencyState);
         Assert.Equal("system", _settings.Theme.Value);

@@ -1,60 +1,58 @@
 using System.Text.Json;
 using ActualLab.Fusion;
-using FluentValidation;
-using FluentValidation.Results;
+using Gravia.Application.Settings.Commands;
 using Gravia.Application.Settings.DTOs;
-using Gravia.Application.Settings.Services;
-using Gravia.Domain.Settings.Interfaces;
+using Gravia.Application.Settings.Queries;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Gravia.Host.Fusion.Settings;
 
-// TODO: Будет полностью переписан
-public class ApplicationSettingsApi(ApplicationSettings settings) : IComputeService
+public class ApplicationSettingsApi(IServiceScopeFactory scopeFactory) : IComputeService
 {
     [ComputeMethod]
-    public virtual Task<RpcResult<SettingSummaryDto[]>> GetAll(CancellationToken cancellationToken = default)
+    public virtual async Task<RpcResult<SettingSummaryDto[]>> GetAll(
+        CancellationToken cancellationToken = default)
     {
-        var result = settings.Settings.OrderBy(setting => setting.Id, StringComparer.Ordinal)
-            .Select(setting => setting.ToDto()).ToArray();
-        return Task.FromResult(RpcResult.Success(result));
+        var result = await Send(new GetApplicationSettingsQuery(), cancellationToken);
+        return RpcResult.Success(result);
     }
 
     [ComputeMethod]
-    public virtual Task<RpcResult<SettingDto?>> Get(string id, CancellationToken cancellationToken = default)
+    public virtual async Task<RpcResult<SettingDto?>> Get(
+        string id,
+        CancellationToken cancellationToken = default)
     {
-        var setting = settings.Find(id);
-        SettingDto? result = setting is null ? null : new SettingDto(
-            setting.ToDto(), setting.SerializeValue(), setting.SerializeDefaultValue());
-        return Task.FromResult(RpcResult.Success<SettingDto?>(result));
+        var result = await Send(new GetApplicationSettingQuery(id), cancellationToken);
+        return RpcResult.Success<SettingDto?>(result);
     }
 
-    public Task<RpcResult> SetValue(string id, JsonElement value, CancellationToken cancellationToken = default)
+    public async Task<RpcResult> SetValue(
+        string id,
+        JsonElement value,
+        CancellationToken cancellationToken = default)
     {
-        return Change(id, setting => setting.SetSerializedValue(value), cancellationToken);
+        await Send(new SetApplicationSettingValueCommand(id, value), cancellationToken);
+        return RpcResult.Success();
     }
 
-    public Task<RpcResult> ResetValue(string id, CancellationToken cancellationToken = default)
+    public async Task<RpcResult> ResetValue(string id, CancellationToken cancellationToken = default)
     {
-        return Change(id, setting => setting.Reset(), cancellationToken);
+        await Send(new ResetApplicationSettingValueCommand(id), cancellationToken);
+        return RpcResult.Success();
     }
 
-    private Task<RpcResult> Change(string id, Action<ISetting> change, CancellationToken cancellationToken)
+    private async Task<TResponse> Send<TResponse>(
+        IRequest<TResponse> request,
+        CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        var setting = settings.Find(id) ?? throw Invalid("id", "setting_not_found", "The setting is not registered.");
-        try
-        {
-            change(setting);
-            return Task.FromResult(RpcResult.Success());
-        }
-        catch (JsonException)
-        {
-            throw Invalid("value", "invalid_setting_value", "The value has an incompatible type or format.");
-        }
+        await using var scope = scopeFactory.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<ISender>().Send(request, cancellationToken);
     }
 
-    private static ValidationException Invalid(string field, string code, string message)
+    private async Task Send(IRequest request, CancellationToken cancellationToken)
     {
-        return new ValidationException([new ValidationFailure(field, message) { ErrorCode = code }]);
+        await using var scope = scopeFactory.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<ISender>().Send(request, cancellationToken);
     }
 }
