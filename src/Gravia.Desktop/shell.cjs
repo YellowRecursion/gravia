@@ -1,9 +1,11 @@
 const { parseBootstrap } = require('./bootstrap.cjs');
 const net = require('node:net');
+const path = require('node:path');
+const { registerDirectoryDialog } = require('./directory-dialog.cjs');
 
 const TITLE_BAR_HEIGHT = 40;
 
-async function runDesktop({ app, BrowserWindow, session, Menu }) {
+async function runDesktop({ app, BrowserWindow, session, Menu, ipcMain, dialog }) {
   app.setName('Gravia');
   // A private local pipe is independent of Windows console/stdio initialization.
   // EOF also arrives if Rider forcibly terminates the Host.
@@ -74,8 +76,14 @@ async function runDesktop({ app, BrowserWindow, session, Menu }) {
       symbolColor: '#e8eaed',
       height: TITLE_BAR_HEIGHT,
     },
-    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      preload: path.join(__dirname, 'preload.cjs'),
+    },
   });
+  registerDirectoryDialog({ ipcMain, dialog, window, backendUrl: configuration.backendUrl });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event) => event.preventDefault());
   window.webContents.on('will-redirect', (event) => event.preventDefault());

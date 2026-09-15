@@ -34,7 +34,7 @@ async function scenario(action) {
   let pids = [];
   let output = '';
   try {
-    for (const file of ['shell.cjs', 'bootstrap.cjs'])
+    for (const file of ['shell.cjs', 'bootstrap.cjs', 'preload.cjs', 'directory-dialog.cjs'])
       fs.copyFileSync(path.join(builtDesktop, file), path.join(directory, file));
     fs.cpSync(path.join(builtDesktop, 'wwwroot'), path.join(directory, 'wwwroot'), {
       recursive: true,
@@ -84,6 +84,7 @@ async function scenario(action) {
     assert.equal(state.rpcHandshakeSent, true);
     assert.equal(state.rpcHandshakeReceived, true);
     assert.equal(state.nodeAvailable, false);
+    assert.deepEqual(state.desktopApi, ['chooseDirectory']);
     assert.equal(state.visible, true);
     assert.equal(state.sandbox, true);
     assert.equal(state.contextIsolation, true);
@@ -123,6 +124,24 @@ async function scenario(action) {
   assert.ok(fs.existsSync(host), 'Build Gravia.Host in Release before running smoke tests.');
   await scenario('close-window');
   await scenario('kill-host');
+  // Real project workflow, with temporary Host storage; never creates user projects.
+  execFileSync(
+    'dotnet',
+    [
+      'test',
+      path.resolve(desktop, '../../tests/Gravia.Host.Tests/Gravia.Host.Tests.csproj'),
+      '--filter',
+      'FullyQualifiedName~ProjectsDesktopTests',
+      '-p:SkipDesktopRestore=true',
+    ],
+    {
+      cwd: desktop,
+      windowsHide: true,
+      env: { ...process.env, GRAVIA_PROJECTS_DESKTOP_SMOKE: '1' },
+      stdio: 'inherit',
+      timeout: 120000,
+    },
+  );
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

@@ -44,7 +44,8 @@ runDesktop(electron)
     const page = await window.webContents.executeJavaScript(`({
     title: document.title,
     mounted: document.querySelector('#root > main')?.getAttribute('aria-label') === 'Gravia Lab',
-    content: document.querySelector('.app-title-bar')?.textContent,
+    content: document.querySelector('.app-title-bar__title')?.textContent,
+    desktopApi: Object.keys(window.graviaDesktop ?? {}),
     titleBar: (() => {
       const element = document.querySelector('.app-title-bar');
       if (!element) return null;

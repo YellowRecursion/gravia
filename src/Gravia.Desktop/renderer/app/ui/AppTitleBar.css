@@ -18,14 +18,29 @@
   height: env(titlebar-area-height, var(--app-title-bar-height));
   align-items: center;
   padding-inline: 14px;
+  gap: 16px;
 }
 
 .app-title-bar__title {
+  flex-shrink: 0;
   overflow: hidden;
   color: rgb(255 255 255 / 86%);
   font-size: 13px;
   font-weight: 500;
   line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-title-bar__project {
+  min-width: 0;
+  max-width: 50%;
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
+}
+
+.app-title-bar__project-name {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

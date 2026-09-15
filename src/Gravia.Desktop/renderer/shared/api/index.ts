@@ -1,6 +1,8 @@
 export { applicationSettingsApi } from './application-settings';
 export { projectSettingsApi } from './project-settings';
 export { projectsApi } from './projects';
+export { currentProjectQuery, recentProjectsQuery } from './project-queries';
+export { chooseDirectory, DesktopUnavailableError } from './desktop';
 export type { ApplicationSettingsApi } from './application-settings';
 export type { ProjectSettingsApi } from './project-settings';
 export type {
