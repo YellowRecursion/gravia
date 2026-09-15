@@ -1,7 +1,9 @@
 using ActualLab.Fusion;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Middlewares;
+using Gravia.Application;
 using Gravia.Application.Common.Behaviors;
+using Gravia.Application.Common.Events;
 using Gravia.Application.Logging;
 using Gravia.Application.Storage;
 using Gravia.Infrastructure.Logging;
@@ -16,6 +18,47 @@ namespace Gravia.Host.Tests;
 
 public sealed class DependencyInjectionTests
 {
+    [Fact]
+    public void AllApplicationAndHostNotificationHandlersAreRegisteredExactlyOnce()
+    {
+        var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder(
+            new HostApplicationBuilderSettings { DisableDefaults = true });
+        builder.Services.AddHostServices();
+        using var host = builder.Build();
+        using var scope = host.Services.CreateScope();
+        Assert.IsType<DomainEventNotificationPublisher>(scope.ServiceProvider.GetRequiredService<INotificationPublisher>());
+
+        var assemblies = new[] { typeof(Gravia.Application.DependencyInjection).Assembly, typeof(DependencyInjection).Assembly };
+        var handlers = assemblies.SelectMany(assembly => assembly.DefinedTypes)
+            .Where(type => type is { IsClass: true, IsAbstract: false, ContainsGenericParameters: false })
+            .SelectMany(type => type.GetInterfaces()
+                .Where(contract => contract.IsGenericType && contract.GetGenericTypeDefinition() == typeof(INotificationHandler<>))
+                .Select(contract => (Implementation: type.AsType(), Contract: contract)))
+            .ToArray();
+        Assert.NotEmpty(handlers);
+        foreach (var handler in handlers)
+        {
+            Assert.Single(builder.Services, descriptor =>
+                descriptor.ServiceType == handler.Contract && descriptor.ImplementationType == handler.Implementation);
+            Assert.Single(scope.ServiceProvider.GetServices(handler.Contract),
+                instance => instance?.GetType() == handler.Implementation);
+        }
+    }
+
+    [Fact]
+    public void RepeatedAssemblyArgumentsDoNotDuplicateNotificationHandlers()
+    {
+        var services = new ServiceCollection();
+        var application = typeof(Gravia.Application.DependencyInjection).Assembly;
+        var host = typeof(DependencyInjection).Assembly;
+        services.AddApplicationServices(application, host, host);
+        var handlers = services.Where(descriptor => descriptor.ServiceType.IsGenericType
+            && descriptor.ServiceType.GetGenericTypeDefinition() == typeof(INotificationHandler<>)).ToArray();
+        Assert.NotEmpty(handlers);
+        Assert.All(handlers.GroupBy(descriptor => (descriptor.ServiceType, descriptor.ImplementationType)),
+            group => Assert.Single(group));
+    }
+
     [Fact]
     public void AllHostFusionServicesAreRegistered()
     {
@@ -60,9 +103,11 @@ public sealed class DependencyInjectionTests
 
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ISender>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IPublisher>());
-        var behavior = Assert.Single(scope.ServiceProvider
-            .GetServices<IPipelineBehavior<TestCommand, int>>());
-        Assert.IsType<ValidationBehavior<TestCommand, int>>(behavior);
+        Assert.Collection(scope.ServiceProvider.GetServices<IPipelineBehavior<TestCommand, int>>(),
+            behavior => Assert.IsType<ProjectOperationBehavior<TestCommand, int>>(behavior),
+            behavior => Assert.IsType<ValidationBehavior<TestCommand, int>>(behavior));
+        Assert.Same(host.Services.GetRequiredService<DomainEventDispatcher>(),
+            Assert.Single(host.Services.GetServices<IHostedService>().OfType<DomainEventDispatcher>()));
 
         var journal = scope.ServiceProvider.GetRequiredService<ILogJournal>();
         scope.ServiceProvider.GetRequiredService<ILoggerFactory>()

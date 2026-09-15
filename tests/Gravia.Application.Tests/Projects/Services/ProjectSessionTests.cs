@@ -34,14 +34,15 @@ public sealed class ProjectSessionTests
     }
 
     [Fact]
-    public async Task DisposePersistsPendingSettingChangesAndPreservesUnknownSettings()
+    public async Task DisposedSettingsNoLongerHandleEventsAndPreservePreviouslySavedValues()
     {
         var data = new MemoryDataStore();
         await data.SaveAsync(SettingsStorage.FileName, new Dictionary<string, int> { ["unknown"] = 17 });
         await using var session = Create("settings", data);
         var setting = Number();
         await session.Settings.Register(setting);
-        setting.SetValue(42); // No dispatcher: this change is still pending.
+        setting.SetValue(42);
+        await new SettingChangedHandler().Handle(new SettingChanged(setting), default);
 
         await session.DisposeAsync();
 
@@ -79,14 +80,16 @@ public sealed class ProjectSessionTests
     }
 
     [Fact]
-    public async Task FailedFinalSaveStillReleasesAllResources()
+    public async Task DisposeReleasesResourcesWithoutSavingSettingsAgain()
     {
         var data = new MemoryDataStore();
         var session = Create("failure", data);
-        await session.Settings.Register(Number());
+        var setting = Number();
+        await session.Settings.Register(setting);
+        await new SettingChangedHandler().Handle(new SettingChanged(setting), default);
         data.WriteFailure = new IOException("Disk unavailable.");
 
-        await Assert.ThrowsAsync<AggregateException>(() => session.DisposeAsync().AsTask());
+        await session.DisposeAsync();
 
         Assert.Equal(1, data.DisposeCount);
         Assert.Empty(session.Settings.Settings);

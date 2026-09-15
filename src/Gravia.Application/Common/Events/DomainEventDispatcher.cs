@@ -14,6 +14,21 @@ public sealed class DomainEventDispatcher(
 {
     private readonly Channel<DomainEvent> _events = Channel.CreateUnbounded<DomainEvent>(
         new UnboundedChannelOptions { SingleReader = true, AllowSynchronousContinuations = false });
+    private static readonly AsyncLocal<bool> ProcessingEvent = new();
+    private readonly object _pendingLock = new();
+    private int _pendingEvents;
+    private TaskCompletionSource? _drained;
+
+    internal static bool IsProcessingEvent => ProcessingEvent.Value;
+
+    /// <summary>Waits for accepted events and events raised by their handlers, including scope disposal.</summary>
+    public Task DrainAsync(CancellationToken cancellationToken = default)
+    {
+        if (IsProcessingEvent)
+            throw new InvalidOperationException("An event handler cannot wait for its own queue.");
+        lock (_pendingLock)
+            return (_drained?.Task ?? Task.CompletedTask).WaitAsync(cancellationToken);
+    }
 
     public override Task StartAsync(CancellationToken cancellationToken)
     {
@@ -23,23 +38,38 @@ public sealed class DomainEventDispatcher(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await foreach (var domainEvent in _events.Reader.ReadAllAsync(stoppingToken))
+        try
         {
-            try
+            await foreach (var domainEvent in _events.Reader.ReadAllAsync(stoppingToken))
             {
-                await using var scope = scopeFactory.CreateAsyncScope();
-                var publisher = scope.ServiceProvider.GetRequiredService<IPublisher>();
-                await publisher.Publish(domainEvent, stoppingToken);
+                ProcessingEvent.Value = true;
+                try
+                {
+                    await using var scope = scopeFactory.CreateAsyncScope();
+                    var publisher = scope.ServiceProvider.GetRequiredService<IPublisher>();
+                    await publisher.Publish(domainEvent, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (Exception exception)
+                {
+                    logger.LogError(exception, "Failed to process domain event {EventType}.",
+                        domainEvent.GetType().Name);
+                }
+                finally
+                {
+                    ProcessingEvent.Value = false;
+                    if (!stoppingToken.IsCancellationRequested) EventCompleted();
+                }
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception exception)
-            {
-                logger.LogError(exception, "Failed to process domain event {EventType}.",
-                    domainEvent.GetType().Name);
-            }
+        }
+        finally
+        {
+            // Forced shutdown must release waiters even if queued events could not finish.
+            lock (_pendingLock)
+                _drained?.TrySetCanceled();
         }
     }
 
@@ -73,10 +103,24 @@ public sealed class DomainEventDispatcher(
 
     private void OnDomainEventRaised(DomainEvent domainEvent)
     {
-        if (!_events.Writer.TryWrite(domainEvent))
+        lock (_pendingLock)
         {
+            _drained ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingEvents++;
+            if (_events.Writer.TryWrite(domainEvent)) return;
+            EventCompleted();
             logger.LogWarning("Domain event {EventType} was not accepted because processing has stopped.",
                 domainEvent.GetType().Name);
+        }
+    }
+
+    private void EventCompleted()
+    {
+        lock (_pendingLock)
+        {
+            if (--_pendingEvents != 0) return;
+            _drained!.TrySetResult();
+            _drained = null;
         }
     }
 }

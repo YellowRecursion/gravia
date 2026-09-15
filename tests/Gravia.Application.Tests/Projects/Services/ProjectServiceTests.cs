@@ -1,10 +1,15 @@
+using Gravia.Application.Common.Events;
 using Gravia.Application.Projects.Interfaces;
 using Gravia.Application.Projects.Services;
 using Gravia.Application.Settings.Services;
+using Gravia.Application.Settings.EventHandlers;
 using Gravia.Application.Storage;
 using Gravia.Domain.Localization.Entities;
 using Gravia.Domain.Settings.Consts;
 using Gravia.Domain.Settings.Entities;
+using Gravia.Domain.Settings.Events;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -21,22 +26,33 @@ public sealed class ProjectServiceTests : IAsyncLifetime
     private readonly TestLogger _logger = new();
     private readonly KeyValueStore _values;
     private readonly ProjectService _service;
+    private readonly ServiceProvider _provider;
+    private readonly DomainEventDispatcher _events;
 
     public ProjectServiceTests()
     {
         _values = new KeyValueStore(_appData);
-        _service = new ProjectService(_factory, _values, _logger);
+        var services = new ServiceCollection();
+        services.AddTransient<IPublisher>(provider => new Mediator(provider));
+        services.AddTransient<INotificationHandler<SettingChanged>, SettingChangedHandler>();
+        _provider = services.BuildServiceProvider();
+        _events = new DomainEventDispatcher(_provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<DomainEventDispatcher>.Instance);
+        _service = new ProjectService(_factory, _values, _events, _logger);
     }
 
     public Task InitializeAsync()
     {
         Assert.Null(ProjectSession.Current);
-        return Task.CompletedTask;
+        return _events.StartAsync(default);
     }
 
     public async Task DisposeAsync()
     {
         await _service.StopAsync(default);
+        await _events.StopAsync(default);
+        _events.Dispose();
+        await _provider.DisposeAsync();
         await _values.DisposeAsync();
     }
 
@@ -148,16 +164,22 @@ public sealed class ProjectServiceTests : IAsyncLifetime
     {
         await _service.OpenAsync(ProjectPath(1));
         var old = ProjectSession.Current!;
-        await old.Settings.Register(new IntSetting("number", new LocalizedText("en", "Number"), 1, SettingsUiPaths.Appearance));
+        var setting = new IntSetting("number", new LocalizedText("en", "Number"), 1, SettingsUiPaths.Appearance);
+        await old.Settings.Register(setting);
         ((MemoryDataStore)old.DataStore).WriteFailure = new IOException("Read-only.");
         try
         {
+            setting.SetValue(42);
+            // A logged event-handler failure must not let switching discard the unsaved value.
+            await _events.DrainAsync().WaitAsync(TimeSpan.FromSeconds(5));
             await Assert.ThrowsAsync<IOException>(() => _service.OpenAsync(ProjectPath(2)));
             Assert.Same(old, ProjectSession.Current);
             Assert.Equal(1, ((MemoryDataStore)_factory.Created.Last().DataStore).DisposeCount);
             Assert.Equal(ProjectPath(1), Assert.Single(await _service.GetRecentAsync()).Path);
         }
         finally { ((MemoryDataStore)old.DataStore).WriteFailure = null; }
+        await _service.OpenAsync(ProjectPath(2));
+        Assert.Equal(42, (await old.DataStore.ReadAsync<Dictionary<string, int>>(SettingsStorage.FileName))!["number"]);
     }
 
     [Fact]
@@ -197,6 +219,82 @@ public sealed class ProjectServiceTests : IAsyncLifetime
         await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(5));
         Assert.Equal(ProjectPath(2), ProjectSession.Current!.ProjectPath);
         Assert.Equal(new[] { ProjectPath(2), ProjectPath(1) }, (await _service.GetRecentAsync()).Select(item => item.Path));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SwitchOrStopWaitsForQueuedSaveBeforeReleasingCurrentProject(bool stopping)
+    {
+        await _service.OpenAsync(ProjectPath(1));
+        var original = ProjectSession.Current!;
+        var data = (MemoryDataStore)original.DataStore;
+        var setting = new IntSetting("number", new LocalizedText("en", "Number"), 1, SettingsUiPaths.Appearance);
+        await original.Settings.Register(setting);
+        await _events.DrainAsync();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        data.BeforeSave = async (_, token) =>
+        {
+            entered.TrySetResult();
+            await release.Task.WaitAsync(token);
+            Assert.Same(original, ProjectSession.Current);
+            Assert.Equal(0, data.DisposeCount);
+        };
+        setting.SetValue(25);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var transition = stopping ? _service.StopAsync(default) : _service.OpenAsync(ProjectPath(2));
+        try
+        {
+            Assert.False(transition.IsCompleted);
+            Assert.Same(original, ProjectSession.Current);
+            Assert.Equal(0, data.DisposeCount);
+        }
+        finally { release.TrySetResult(); }
+        await transition.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(1, data.DisposeCount);
+        Assert.Equal(25, (await data.ReadAsync<Dictionary<string, int>>(SettingsStorage.FileName))!["number"]);
+    }
+
+    [Fact]
+    public async Task CancelledSwitchKeepsCurrentProjectAndAllowsRetryAfterEventFinishes()
+    {
+        await _service.OpenAsync(ProjectPath(1));
+        var original = ProjectSession.Current!;
+        var data = (MemoryDataStore)original.DataStore;
+        var setting = new IntSetting("number", new LocalizedText("en", "Number"), 1, SettingsUiPaths.Appearance);
+        await original.Settings.Register(setting);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        data.BeforeSave = async (_, token) => { entered.TrySetResult(); await release.Task.WaitAsync(token); };
+        setting.SetValue(42);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        using var cancellation = new CancellationTokenSource();
+        var switching = _service.OpenAsync(ProjectPath(2), cancellation.Token);
+        try
+        {
+            cancellation.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => switching);
+            Assert.Same(original, ProjectSession.Current);
+            Assert.Equal(0, data.DisposeCount);
+            Assert.Equal(1, ((MemoryDataStore)_factory.Created.Last().DataStore).DisposeCount);
+        }
+        finally { release.TrySetResult(); }
+        await _service.OpenAsync(ProjectPath(2)).WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(ProjectPath(2), ProjectSession.Current!.ProjectPath);
+    }
+
+    [Fact]
+    public async Task ShutdownSaveFailureIsLoggedAndStillReleasesTheSession()
+    {
+        await _service.OpenAsync(ProjectPath(1));
+        var original = ProjectSession.Current!;
+        await original.Settings.Register(new IntSetting("number", new LocalizedText("en", "Number"), 1, SettingsUiPaths.Appearance));
+        ((MemoryDataStore)original.DataStore).WriteFailure = new IOException("Read-only.");
+        await _service.StopAsync(default);
+        Assert.Null(ProjectSession.Current);
+        Assert.Equal(1, ((MemoryDataStore)original.DataStore).DisposeCount);
+        Assert.Contains(LogLevel.Error, _logger.Levels);
     }
 
     private static string ProjectPath(int number) => Path.Combine(Path.GetTempPath(), $"Project-{number}");

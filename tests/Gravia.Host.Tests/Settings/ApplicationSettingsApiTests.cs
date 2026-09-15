@@ -3,6 +3,7 @@ using ActualLab.Fusion;
 using FluentValidation;
 using Gravia.Application.Settings;
 using Gravia.Application.Settings.Services;
+using Gravia.Application.Logging;
 using Gravia.Application.Storage;
 using Gravia.Domain.Common.Events;
 using Gravia.Domain.CommonExceptions;
@@ -17,6 +18,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Gravia.Host.Tests.Settings;
 
+[Collection("Project lifecycle")]
 public sealed class ApplicationSettingsApiTests : IAsyncLifetime
 {
     private readonly MemoryDataStore _data = new();
@@ -140,6 +142,26 @@ public sealed class ApplicationSettingsApiTests : IAsyncLifetime
         Assert.Equal(ConsistencyState.Consistent, catalog.ConsistencyState);
     }
 
+    [Fact]
+    public async Task FailedPersistenceStillInvalidatesTheUiAndLogsTheFailure()
+    {
+        await _api.SetValue("gravia.theme", JsonSerializer.SerializeToElement("light"));
+        await Drain();
+        var theme = await Computed.Capture(() => _api.Get("gravia.theme"));
+        _data.SaveFailure = new IOException("Test disk is unavailable.");
+        try
+        {
+            await _api.SetValue("gravia.theme", JsonSerializer.SerializeToElement("dark"));
+            await Drain();
+            Assert.Equal(ConsistencyState.Invalidated, theme.ConsistencyState);
+            Assert.Equal("dark", (await _api.Get("gravia.theme")).Data!.Value.GetString());
+            Assert.Equal("light", _data.Value("gravia.theme").GetString());
+            Assert.Contains(_provider.GetRequiredService<ILogJournal>().Read().Entries,
+                entry => entry.Message.Contains("SettingChangedHandler") && entry.Message.Contains("failed"));
+        }
+        finally { _data.SaveFailure = null; }
+    }
+
     private static async Task Drain()
     {
         var barrier = new QueueBarrier();
@@ -164,11 +186,13 @@ public sealed class ApplicationSettingsApiTests : IAsyncLifetime
     private sealed class MemoryDataStore : IDataStore
     {
         private string _json = "{}";
+        public Exception? SaveFailure { get; set; }
         public JsonElement Value(string id) => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(_json)![id];
         public Task<T?> ReadAsync<T>(string path, CancellationToken cancellationToken = default) where T : class
             => Task.FromResult(JsonSerializer.Deserialize<T>(_json));
         public Task SaveAsync<T>(string path, T value, CancellationToken cancellationToken = default) where T : class
         {
+            if (SaveFailure is not null) throw SaveFailure;
             _json = JsonSerializer.Serialize(value);
             return Task.CompletedTask;
         }

@@ -1,8 +1,8 @@
+using System.Reflection;
 using FluentValidation;
 using Gravia.Application.Common.Behaviors;
 using Gravia.Application.Common.Events;
 using Gravia.Application.Projects.Services;
-using Gravia.Application.Settings;
 using Gravia.Application.Settings.Services;
 using Gravia.Application.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,9 +12,11 @@ namespace Gravia.Application;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services,
+        params Assembly[] additionalAssemblies)
     {
-        services.AddHostedService<DomainEventDispatcher>();
+        services.TryAddSingleton<DomainEventDispatcher>();
+        services.AddHostedService(provider => provider.GetRequiredService<DomainEventDispatcher>());
         services.TryAddSingleton<ApplicationSettings>();
         services.TryAddSingleton<ProjectService>();
         services.AddHostedService(provider => provider.GetRequiredService<ApplicationSettings>());
@@ -23,7 +25,10 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
         services.AddMediatR(configuration =>
         {
-            configuration.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
+            configuration.RegisterServicesFromAssemblies(
+                additionalAssemblies.Prepend(typeof(DependencyInjection).Assembly).Distinct().ToArray());
+            configuration.NotificationPublisherType = typeof(DomainEventNotificationPublisher);
+            configuration.AddOpenBehavior(typeof(ProjectOperationBehavior<,>));
             configuration.AddOpenBehavior(typeof(ValidationBehavior<,>));
         });
 

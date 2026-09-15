@@ -1,9 +1,12 @@
 using Gravia.Application.Settings.Services;
+using Gravia.Application.Projects.Events;
 using Gravia.Application.Storage;
+using Gravia.Domain.Common.Events;
 
 namespace Gravia.Application.Projects.Services;
 
 /// <summary>Owns the services of one open project directory.</summary>
+/// <remarks>ProjectService finishes operations and saves settings before disposing the session.</remarks>
 public sealed class ProjectSession : IAsyncDisposable
 {
     private static ProjectSession? _current;
@@ -28,7 +31,11 @@ public sealed class ProjectSession : IAsyncDisposable
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
     }
 
-    internal static void SetCurrent(ProjectSession? session) => Volatile.Write(ref _current, session);
+    internal static void SetCurrent(ProjectSession? session)
+    {
+        var previous = Interlocked.Exchange(ref _current, session);
+        if (!ReferenceEquals(previous, session)) new CurrentProjectChanged().Raise();
+    }
 
     public ValueTask DisposeAsync()
     {
@@ -38,11 +45,9 @@ public sealed class ProjectSession : IAsyncDisposable
 
     private async Task DisposeCoreAsync()
     {
-        Interlocked.CompareExchange(ref _current, null, this);
+        if (ReferenceEquals(Interlocked.CompareExchange(ref _current, null, this), this))
+            new CurrentProjectChanged().Raise();
         List<Exception> errors = [];
-        try { await Settings.FlushAsync(); }
-        catch (Exception error) { errors.Add(error); }
-
         // Dependants finish before their shared store is released. Attempt every cleanup.
         foreach (var resource in new object[] { Settings, KeyValueStore, DataStore })
         {

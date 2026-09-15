@@ -1,3 +1,4 @@
+using Gravia.Application.Common.Events;
 using Gravia.Application.Projects.DTOs;
 using Gravia.Application.Projects.Interfaces;
 using Gravia.Application.Storage;
@@ -10,16 +11,38 @@ namespace Gravia.Application.Projects.Services;
 public sealed class ProjectService(
     IProjectSessionFactory factory,
     [FromKeyedServices(DataStoreKey.Application)] KeyValueStore applicationValues,
+    DomainEventDispatcher events,
     ILogger<ProjectService> logger) : IHostedService
 {
     public const string RecentProjectsKey = "gravia.recentProjects";
     private static readonly SemaphoreSlim LifecycleGate = new(1, 1);
+    private static readonly AsyncLocal<bool> InsideOperation = new();
     private static readonly StringComparer PathComparer = OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
     private bool _stopped;
 
     public ProjectDto? GetCurrent()
         => ProjectSession.Current is { } session ? ToDto(session) : null;
+
+    /// <summary>Serializes requests with project switching. Nested requests belong to the same operation.</summary>
+    internal async Task<T> RunAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        // Event handlers must finish while switching holds the gate and drains their queue.
+        if (InsideOperation.Value || DomainEventDispatcher.IsProcessingEvent)
+            return await operation();
+        await LifecycleGate.WaitAsync(cancellationToken);
+        try
+        {
+            InsideOperation.Value = true;
+            return await operation();
+        }
+        finally
+        {
+            InsideOperation.Value = false;
+            LifecycleGate.Release();
+        }
+    }
 
     public async Task<ProjectDto[]> GetRecentAsync(CancellationToken cancellationToken = default)
     {
@@ -35,6 +58,8 @@ public sealed class ProjectService(
 
     private async Task<ProjectDto> SwitchAsync(Func<Task<ProjectSession>> prepare, CancellationToken cancellationToken)
     {
+        if (InsideOperation.Value || DomainEventDispatcher.IsProcessingEvent)
+            throw new InvalidOperationException("Project switching must be a separate application operation.");
         await LifecycleGate.WaitAsync(cancellationToken);
         try
         {
@@ -43,9 +68,10 @@ public sealed class ProjectService(
             var previous = ProjectSession.Current;
             try
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                await events.DrainAsync(cancellationToken);
                 if (previous is not null)
                     await previous.Settings.FlushAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
             }
             catch
             {
@@ -97,11 +123,20 @@ public sealed class ProjectService(
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
+        if (InsideOperation.Value || DomainEventDispatcher.IsProcessingEvent)
+            throw new InvalidOperationException("Project shutdown must run outside application operations.");
         await LifecycleGate.WaitAsync(cancellationToken);
         try
         {
-            _stopped = true;
+            if (_stopped) return;
+            await events.DrainAsync(cancellationToken);
             var session = ProjectSession.Current;
+            if (session is not null)
+            {
+                try { await session.Settings.FlushAsync(cancellationToken); }
+                catch (Exception error) { logger.LogError(error, "Failed to save project settings during shutdown."); }
+            }
+            _stopped = true;
             ProjectSession.SetCurrent(null);
             if (session is not null) await ReleaseAsync(session);
         }
