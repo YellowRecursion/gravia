@@ -1,13 +1,19 @@
 export { applicationSettingsApi } from './application-settings';
+export { projectSettingsApi } from './project-settings';
+export { projectsApi } from './projects';
+export type { ApplicationSettingsApi } from './application-settings';
+export type { ProjectSettingsApi } from './project-settings';
 export type {
-  ApplicationSettingsApi,
   LocalizedTextDto,
   SettingDto,
   SettingSummaryDto,
-} from './application-settings';
+  SettingsApi,
+} from './settings-contract';
+export type { ProjectDto, ProjectsApi } from './projects';
 export { fusionHub, fusionPeer } from './fusion';
 export { logJournalApi } from './log-journal';
 export { observeLogJournal, logJournalQueryKey } from './log-journal-sync';
 export type { LogJournalSnapshot } from './log-journal-sync';
 export type { LogEntry, LogState, LogBatch, LogJournalApi } from './log-journal-contract';
+export { getRpcFieldErrors, RpcError, unwrapRpcResult } from './rpc-result';
 export type { RpcErrorData, RpcFailure, RpcFieldError, RpcResult, RpcSuccess } from './rpc-result';

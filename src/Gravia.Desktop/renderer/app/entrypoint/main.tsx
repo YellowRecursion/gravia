@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from '../ui/App';
+import { AppErrorBoundary } from '../ui/AppErrorBoundary';
 import { AppProviders } from '../providers/AppProviders';
 import { fusionPeer } from '@/shared/api';
 import { initializeI18n } from '@/shared/i18n';
@@ -18,7 +19,9 @@ async function bootstrap() {
   createRoot(root).render(
     <StrictMode>
       <AppProviders>
-        <App />
+        <AppErrorBoundary>
+          <App />
+        </AppErrorBoundary>
       </AppProviders>
     </StrictMode>,
   );

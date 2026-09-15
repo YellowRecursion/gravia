@@ -27,3 +27,40 @@ export interface RpcFieldError {
   readonly code: string;
   readonly message: string;
 }
+
+export class RpcError extends Error {
+  readonly code: string;
+  readonly traceId: string;
+  readonly data: RpcErrorData | null;
+
+  constructor(failure: RpcFailure) {
+    super(failure.errorMessage);
+    this.name = 'RpcError';
+    this.code = failure.errorCode;
+    this.traceId = failure.traceId;
+    this.data = failure.errorData;
+  }
+}
+
+/** Converts the Host result envelope into the value/error contract expected by TanStack Query. */
+export function unwrapRpcResult<TData>(result: RpcResult<TData>): TData {
+  if (!result.isSuccess) throw new RpcError(result);
+  return result.data as TData;
+}
+
+export function getRpcFieldErrors(error: unknown): readonly RpcFieldError[] {
+  if (!(error instanceof RpcError)) return [];
+  const errors = error.data?.errors;
+  if (!Array.isArray(errors)) return [];
+  return errors.filter(isRpcFieldError);
+}
+
+function isRpcFieldError(value: unknown): value is RpcFieldError {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<RpcFieldError>;
+  return (
+    typeof candidate.field === 'string' &&
+    typeof candidate.code === 'string' &&
+    typeof candidate.message === 'string'
+  );
+}
