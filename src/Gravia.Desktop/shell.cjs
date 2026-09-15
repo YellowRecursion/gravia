@@ -1,6 +1,8 @@
 const { parseBootstrap } = require('./bootstrap.cjs');
 const net = require('node:net');
 
+const TITLE_BAR_HEIGHT = 40;
+
 async function runDesktop({ app, BrowserWindow, session, Menu }) {
   app.setName('Gravia');
   // A private local pipe is independent of Windows console/stdio initialization.
@@ -65,6 +67,13 @@ async function runDesktop({ app, BrowserWindow, session, Menu }) {
     minHeight: 480,
     show: false,
     backgroundColor: '#202124',
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      // Keep the native controls, but let the renderer draw one uninterrupted title bar.
+      color: '#20212400',
+      symbolColor: '#e8eaed',
+      height: TITLE_BAR_HEIGHT,
+    },
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));

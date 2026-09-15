@@ -44,7 +44,16 @@ runDesktop(electron)
     const page = await window.webContents.executeJavaScript(`({
     title: document.title,
     mounted: document.querySelector('#root > main')?.getAttribute('aria-label') === 'Gravia Lab',
-    content: document.querySelector('#root')?.textContent,
+    content: document.querySelector('.app-title-bar')?.textContent,
+    titleBar: (() => {
+      const element = document.querySelector('.app-title-bar');
+      if (!element) return null;
+      const style = getComputedStyle(element);
+      return {
+        height: element.getBoundingClientRect().height,
+        dragRegion: style.getPropertyValue('app-region') || style.getPropertyValue('-webkit-app-region')
+      };
+    })(),
     nodeAvailable: typeof require !== 'undefined' || typeof process !== 'undefined'
   })`);
     const preferences = window.webContents.getLastWebPreferences();

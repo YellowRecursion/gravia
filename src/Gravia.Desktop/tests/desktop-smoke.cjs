@@ -78,7 +78,8 @@ async function scenario(action) {
     assert.equal(state.title, 'Gravia Lab');
     assert.equal(state.windowTitle, 'Gravia Lab');
     assert.equal(state.mounted, true);
-    assert.equal(state.content, '');
+    assert.equal(state.content, 'Gravia Lab');
+    assert.deepEqual(state.titleBar, { height: 40, dragRegion: 'drag' });
     assert.deepEqual(state.rendererErrors, []);
     assert.equal(state.rpcHandshakeSent, true);
     assert.equal(state.rpcHandshakeReceived, true);
@@ -92,7 +93,7 @@ async function scenario(action) {
     if (action === 'close-window') assert.equal(exitCode, 0, output);
     await until(() => pids.every((pid) => !alive(pid)), 10000);
     console.log(
-      `${action}: blank visible window, isolated renderer, Host stopped, ${pids.length} Electron processes stopped.`,
+      `${action}: custom title bar visible, isolated renderer, Host stopped, ${pids.length} Electron processes stopped.`,
     );
   } finally {
     if (child && child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');

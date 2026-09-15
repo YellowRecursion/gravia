@@ -1,0 +1,31 @@
+.app-title-bar {
+  position: relative;
+  flex: 0 0 var(--app-title-bar-height);
+  height: var(--app-title-bar-height);
+  background: #202124;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  user-select: none;
+  app-region: drag;
+  -webkit-app-region: drag;
+}
+
+.app-title-bar__safe-area {
+  position: absolute;
+  top: env(titlebar-area-y, 0);
+  left: env(titlebar-area-x, 0);
+  display: flex;
+  width: env(titlebar-area-width, 100%);
+  height: env(titlebar-area-height, var(--app-title-bar-height));
+  align-items: center;
+  padding-inline: 14px;
+}
+
+.app-title-bar__title {
+  overflow: hidden;
+  color: rgb(255 255 255 / 86%);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

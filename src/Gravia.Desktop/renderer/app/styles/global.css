@@ -1,4 +1,6 @@
 :root {
+  --app-title-bar-height: 40px;
+
   color-scheme: dark;
   background: #202124;
   font-synthesis: none;
@@ -22,4 +24,9 @@ main {
 
 body {
   overflow: hidden;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
 }

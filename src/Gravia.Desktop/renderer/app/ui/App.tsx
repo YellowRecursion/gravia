@@ -1,7 +1,13 @@
 import { useTranslation } from 'react-i18next';
+import { AppTitleBar } from './AppTitleBar';
+import { ProjectsScreen } from '@/pages/projects';
 
 export function App() {
   const { t } = useTranslation();
-  // Compose pages here once the first screen is designed.
-  return <main aria-label={t('applicationName')} />;
+  return (
+    <main className="app-shell" aria-label={t('applicationName')}>
+      <AppTitleBar />
+      <ProjectsScreen />
+    </main>
+  );
 }
