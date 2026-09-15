@@ -13,7 +13,7 @@ namespace Gravia.Application.Settings.Services;
 
 /// <summary>Registers settings and persists their values using an existing data store.</summary>
 /// <remarks>Use one instance per store. Dispose after pending events finish. Does not own the data store.</remarks>
-public abstract class SettingsStorage(IDataStore dataStore, ILogger logger) : IDisposable
+public abstract class SettingsStorage(IDataStore dataStore, ILogger logger) : IDisposable, IAsyncDisposable
 {
     public const string FileName = "settings.json";
 
@@ -21,6 +21,7 @@ public abstract class SettingsStorage(IDataStore dataStore, ILogger logger) : ID
     private static readonly ConditionalWeakTable<ISetting, SettingsStorage> Owners = new();
     private readonly ConcurrentDictionary<string, ISetting> _settings = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private bool _disposed;
 
     public IReadOnlyCollection<ISetting> Settings => _settings.Values.ToArray();
 
@@ -30,6 +31,7 @@ public abstract class SettingsStorage(IDataStore dataStore, ILogger logger) : ID
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             var owner = Owners.GetValue(setting, _ => this);
             if (!ReferenceEquals(owner, this))
                 throw new InvalidOperationException("The setting is already registered in another storage.");
@@ -85,6 +87,7 @@ public abstract class SettingsStorage(IDataStore dataStore, ILogger logger) : ID
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             if (!_settings.TryGetValue(id, out var setting)) return;
 
             var values = await ReadValuesAsync(cancellationToken);
@@ -109,6 +112,7 @@ public abstract class SettingsStorage(IDataStore dataStore, ILogger logger) : ID
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_disposed) return;
             if (!_settings.TryGetValue(setting.Id, out var registered) || !ReferenceEquals(registered, setting))
                 return;
 
@@ -123,11 +127,43 @@ public abstract class SettingsStorage(IDataStore dataStore, ILogger logger) : ID
         => await dataStore.ReadAsync<Dictionary<string, JsonElement>>(FileName, cancellationToken)
            ?? new(StringComparer.Ordinal);
 
+    /// <summary>Persists current values even when their change events are still queued.</summary>
+    internal async Task FlushAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_settings.IsEmpty) return;
+            var values = await ReadValuesAsync(cancellationToken);
+            foreach (var setting in _settings.Values)
+                values[setting.Id] = setting.SerializeValue();
+            await dataStore.SaveAsync(FileName, values, cancellationToken);
+        }
+        finally { _gate.Release(); }
+    }
+
     public void Dispose()
     {
+        _gate.Wait();
+        try { Clear(); }
+        finally { _gate.Release(); }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _gate.WaitAsync();
+        try { Clear(); }
+        finally { _gate.Release(); }
+    }
+
+    private void Clear()
+    {
+        _disposed = true;
         foreach (var setting in _settings.Values)
             Owners.Remove(setting);
         _settings.Clear();
-        _gate.Dispose();
+        // Queued event handlers may already be waiting on this gate. Let them exit normally.
+        // No semaphore wait handle is allocated; the gate is collected with the storage.
     }
 }

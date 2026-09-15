@@ -9,11 +9,12 @@ namespace Gravia.Infrastructure.Storage;
 /// Saves replace files only after writing a temporary file in the same directory.
 /// Operations are serialized within this instance. Dispose after all operations finish.
 /// </remarks>
-public sealed class FileDataStore : IDataStore, IDisposable
+public sealed class FileDataStore : IDataStore, IDisposable, IAsyncDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private readonly string _directory;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private bool _disposed;
 
     public FileDataStore(string directory)
     {
@@ -140,6 +141,7 @@ public sealed class FileDataStore : IDataStore, IDisposable
 
     private string ResolvePath(string path)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var segments = path.Split('/');
         if (Path.IsPathRooted(path) || path.Contains('\\') ||
@@ -165,5 +167,18 @@ public sealed class FileDataStore : IDataStore, IDisposable
         return file;
     }
 
-    public void Dispose() => _gate.Dispose();
+    public void Dispose()
+    {
+        _gate.Wait();
+        try { _disposed = true; }
+        finally { _gate.Release(); }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _gate.WaitAsync();
+        try { _disposed = true; }
+        finally { _gate.Release(); }
+        // Wait for active I/O; queued operations still need the gate to report disposal.
+    }
 }

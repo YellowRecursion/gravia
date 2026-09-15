@@ -1,6 +1,7 @@
 using FluentValidation;
 using Gravia.Application.Common.Behaviors;
 using Gravia.Application.Common.Events;
+using Gravia.Application.Projects.Services;
 using Gravia.Application.Settings;
 using Gravia.Application.Settings.Services;
 using Gravia.Application.Storage;
@@ -15,6 +16,7 @@ public static class DependencyInjection
     {
         services.AddHostedService<DomainEventDispatcher>();
         services.TryAddSingleton<ApplicationSettings>();
+        services.TryAddSingleton<ProjectService>();
         services.AddHostedService(provider => provider.GetRequiredService<ApplicationSettings>());
         services.TryAddKeyedSingleton<KeyValueStore>(DataStoreKey.Application,
             (provider, _) => new KeyValueStore(provider.GetRequiredKeyedService<IDataStore>(DataStoreKey.Application)));

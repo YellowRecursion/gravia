@@ -9,12 +9,13 @@ namespace Gravia.Application.Storage;
 /// Use one instance per underlying store. Dispose after all operations finish.
 /// This class does not own or dispose the underlying data store.
 /// </remarks>
-public sealed class KeyValueStore : IDisposable
+public sealed class KeyValueStore : IDisposable, IAsyncDisposable
 {
     public const string FileName = "key-values.json";
 
     private readonly IDataStore _storage;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private bool _disposed;
 
     public KeyValueStore(IDataStore storage)
         => _storage = storage ?? throw new ArgumentNullException(nameof(storage));
@@ -74,7 +75,23 @@ public sealed class KeyValueStore : IDisposable
     }
 
     private async Task<Dictionary<string, JsonElement>> ReadValuesAsync(CancellationToken token)
-        => await _storage.ReadAsync<Dictionary<string, JsonElement>>(FileName, token) ?? new(StringComparer.Ordinal);
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return await _storage.ReadAsync<Dictionary<string, JsonElement>>(FileName, token) ?? new(StringComparer.Ordinal);
+    }
 
-    public void Dispose() => _gate.Dispose();
+    public void Dispose()
+    {
+        _gate.Wait();
+        try { _disposed = true; }
+        finally { _gate.Release(); }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _gate.WaitAsync();
+        try { _disposed = true; }
+        finally { _gate.Release(); }
+        // Keep the managed gate usable so queued operations can observe disposal safely.
+    }
 }

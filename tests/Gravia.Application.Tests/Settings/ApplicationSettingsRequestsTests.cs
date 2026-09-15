@@ -28,6 +28,8 @@ public sealed class ApplicationSettingsRequestsTests : IAsyncLifetime
         services.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(NullLogger<>));
         services.AddKeyedSingleton<IDataStore>(DataStoreKey.Application, _data);
         services.AddApplicationServices();
+        services.AddSingleton<Gravia.Application.Projects.Interfaces.IProjectSessionFactory,
+            Gravia.Application.Tests.Projects.UnusedProjectSessionFactory>();
         services.AddSingleton<ILogJournal>(new UnusedLogJournal());
         _provider = services.BuildServiceProvider(new ServiceProviderOptions
         {

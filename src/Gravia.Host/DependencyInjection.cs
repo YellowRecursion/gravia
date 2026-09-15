@@ -1,4 +1,5 @@
 using Gravia.Application;
+using Gravia.Application.Projects.Services;
 using Gravia.Application.Settings.Events;
 using Gravia.Domain.Settings.Events;
 using Gravia.Infrastructure;
@@ -16,6 +17,7 @@ public static class DependencyInjection
         services.AddTransient<INotificationHandler<SettingChanged>, ApplicationSettingsInvalidation>();
         services.AddTransient<INotificationHandler<SettingsRegistrationChanged>, ApplicationSettingsInvalidation>();
         services.AddApplicationServices();
+        services.AddHostedService(provider => provider.GetRequiredService<ProjectService>());
         services.AddInfrastructureServices();
         services.AddFusionServices();
 

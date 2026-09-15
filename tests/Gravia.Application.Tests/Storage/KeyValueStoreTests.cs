@@ -168,6 +168,8 @@ public sealed class KeyValueStoreTests
         services.AddKeyedSingleton<IDataStore>(DataStoreKey.Application, storage);
         services.AddApplicationServices();
         services.AddApplicationServices();
+        services.AddSingleton<Gravia.Application.Projects.Interfaces.IProjectSessionFactory,
+            Gravia.Application.Tests.Projects.UnusedProjectSessionFactory>();
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();
         var values = provider.GetRequiredKeyedService<KeyValueStore>(DataStoreKey.Application);

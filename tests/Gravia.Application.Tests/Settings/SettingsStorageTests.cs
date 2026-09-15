@@ -28,6 +28,8 @@ public sealed class SettingsStorageTests
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         services.AddKeyedSingleton<IDataStore>(DataStoreKey.Application, appData);
         services.AddApplicationServices();
+        services.AddSingleton<Gravia.Application.Projects.Interfaces.IProjectSessionFactory,
+            Gravia.Application.Tests.Projects.UnusedProjectSessionFactory>();
         services.AddSingleton<ILogJournal>(new UnusedLogJournal());
         await using var provider = services.BuildServiceProvider(
             new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
