@@ -1,14 +1,16 @@
+import { useRef } from 'react';
 import { theme } from 'antd';
 import { DockviewReact, themeDark, themeLight } from 'dockview-react';
-import type { DockviewReadyEvent } from 'dockview-react';
+import type { DockviewApi, DockviewReadyEvent } from 'dockview-react';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/shared/ui';
 import { FilesPanel, GraphPanel, InspectorPanel } from './WorkspacePanels';
 import { LogsPanel } from './LogsPanel';
 import { LogStatusBar } from './LogStatusBar';
-import { createLogsPreview } from './logs-preview';
 import { WorkspaceTab } from './WorkspaceTab';
 import { WorkspaceAddAction, WorkspaceEmpty, WorkspaceMaximizeAction } from './WorkspaceActions';
+import { addWorkspacePanel } from './panel-types';
+import type { LogTarget } from './panel-types';
 import './MainScreen.css';
 
 const components = {
@@ -22,10 +24,25 @@ export function MainScreen() {
   const { t } = useTranslation();
   const { token } = theme.useToken();
   const colorScheme = useColorScheme();
-  // Preview only; the status bar does not read selection or lifecycle state from dock panels.
-  const latestLog = createLogsPreview(t).at(-1);
+  const dockApi = useRef<DockviewApi | null>(null);
+
+  function openLogs(target: LogTarget) {
+    const api = dockApi.current;
+    if (!api) return;
+    const existing =
+      api.activePanel?.api.component === 'logs'
+        ? api.activePanel
+        : api.panels.find((panel) => panel.api.component === 'logs');
+    if (api.hasMaximizedGroup() && !existing?.api.isMaximized()) {
+      api.exitMaximizedGroup();
+    }
+    const panel = existing ?? addWorkspacePanel(api, 'logs', t('workspace.logs'), api.activeGroup);
+    panel.api.updateParameters({ revealLog: { ...target, requestId: crypto.randomUUID() } });
+    panel.api.setActive();
+  }
 
   function onReady({ api }: DockviewReadyEvent) {
+    dockApi.current = api;
     // Layout is owned by this mounted screen; no persistence or project document state yet.
     api.addPanel({
       id: 'graph',
@@ -82,7 +99,7 @@ export function MainScreen() {
           getTabContextMenuItems={() => []}
         />
       </div>
-      <LogStatusBar entry={latestLog} />
+      <LogStatusBar onOpenLogs={openLogs} />
     </section>
   );
 }

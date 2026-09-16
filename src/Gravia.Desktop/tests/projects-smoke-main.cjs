@@ -244,9 +244,9 @@ runDesktop({
       input.dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
     }
-    async function activateDockTab(title) {
+    async function activateDockTab(title, occurrence = 0) {
       const point = await evaluate(`(() => {
-        const tab = Array.from(document.querySelectorAll('.dv-tab')).find(tab => tab.textContent === ${JSON.stringify(title)});
+        const tab = Array.from(document.querySelectorAll('.dv-tab')).filter(tab => tab.textContent === ${JSON.stringify(title)})[${occurrence}];
         const rect = tab.getBoundingClientRect();
         return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) };
       })()`);
@@ -567,6 +567,97 @@ runDesktop({
       await evaluate(`document.querySelectorAll('.workspace-tab-title > .anticon').length`),
       5,
     );
+    // Both visible log panels use the real Fusion journal. Their filters remain independent.
+    await activateDockTab('Логи', 1);
+    await until(`document.querySelectorAll('.logs-panel').length === 2`);
+    await evaluate(`fetch('/test/logs/bulk', { method: 'POST' })`);
+    await until(
+      `Array.from(document.querySelectorAll('.logs-panel')).every(panel => panel.querySelector('[role="option"]')?.getAttribute('aria-setsize') === '50000')`,
+    );
+    // Clicking the status reuses a log panel even when both log tabs are hidden.
+    await activateDockTab('Файлы');
+    await activateDockTab('Инспектор');
+    await until(`document.querySelectorAll('.logs-panel').length === 0`);
+    await activateDockTab('Граф');
+    await click('.dv-active-group [aria-label="Развернуть на рабочую область"]');
+    await until(`!!document.querySelector('[aria-label="Восстановить раскладку"]')`);
+    await click('.main-screen__status-message');
+    await until(
+      `document.querySelectorAll('.logs-panel').length === 1 && !document.querySelector('[aria-label="Восстановить раскладку"]')`,
+    );
+    assert.equal(await evaluate(`document.querySelectorAll('.dv-tab').length`), 5);
+    // Restore both visible panels for the independent-filter checks below.
+    await activateDockTab('Логи', 0);
+    await activateDockTab('Логи', 1);
+    await until(`document.querySelectorAll('.logs-panel').length === 2`);
+    assert.ok(
+      await evaluate(
+        `Array.from(document.querySelectorAll('.logs-panel')).every(panel => panel.querySelectorAll('[role="option"]').length < 100)`,
+      ),
+    );
+    await evaluate(
+      `document.querySelectorAll('.logs-panel')[0].querySelector('[aria-label="Объединять повторы"]').click()`,
+    );
+    await until(
+      `document.querySelectorAll('.logs-panel')[0].querySelector('.logs-panel__count')?.textContent === '50000'`,
+    );
+    await fill('.logs-panel [aria-label="Поиск в журнале"]', 'no matching entry');
+    await until(
+      `document.querySelectorAll('.logs-panel')[0].querySelectorAll('[role="option"]').length === 0`,
+    );
+    assert.ok(
+      await evaluate(
+        `document.querySelectorAll('.logs-panel')[1].querySelectorAll('[role="option"]').length > 0`,
+      ),
+    );
+    await fill('.logs-panel [aria-label="Поиск в журнале"]', '');
+    await until(
+      `document.querySelectorAll('.logs-panel')[0].querySelector('.logs-panel__count')?.textContent === '50000'`,
+    );
+    // Sustained real RPC updates with both panels open (one collapsed, one expanded).
+    for (let burst = 0; burst < 30; burst++) {
+      await evaluate(`fetch('/test/logs/burst', { method: 'POST' })`);
+      await delay(16);
+    }
+    await until(
+      `document.querySelectorAll('.logs-panel')[0].querySelector('.logs-panel__count')?.textContent === '53000' && document.querySelectorAll('.logs-panel')[1].querySelector('[role="option"]')?.getAttribute('aria-setsize') === '53000'`,
+    );
+    // Scrolling away disables follow. Enabling it again must reveal the newest row.
+    await evaluate(
+      `(() => { const list = document.querySelectorAll('.logs-panel')[1].querySelector('.logs-panel__list'); list.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, bubbles: true })); list.scrollTop = 0; })()`,
+    );
+    await until(
+      `document.querySelectorAll('.logs-panel')[1].querySelector('[aria-label="Прокручивать к новым сообщениям"]').getAttribute('aria-pressed') === 'false'`,
+    );
+    await evaluate(
+      `document.querySelectorAll('.logs-panel')[1].querySelector('[aria-label="Прокручивать к новым сообщениям"]').click()`,
+    );
+    await until(
+      `Array.from(document.querySelectorAll('.logs-panel')[1].querySelectorAll('[role="option"]')).some(row => row.getAttribute('aria-posinset') === '53000')`,
+    );
+    assert.equal(
+      await evaluate(
+        `document.querySelectorAll('.logs-panel')[1].querySelector('[aria-label="Объединять повторы"]').getAttribute('aria-pressed')`,
+      ),
+      'false',
+    );
+    await evaluate(
+      `document.querySelectorAll('.logs-panel')[0].querySelector('[aria-label="Ошибка"]').click()`,
+    );
+    await until(
+      `document.querySelectorAll('.logs-panel')[0].querySelectorAll('[role="option"]').length === 0`,
+    );
+    assert.ok(
+      await evaluate(
+        `document.querySelectorAll('.logs-panel')[1].querySelectorAll('[role="option"]').length > 0`,
+      ),
+    );
+    await evaluate(
+      `document.querySelectorAll('.logs-panel')[1].querySelector('[aria-label="Очистить журнал"]').click()`,
+    );
+    await until(
+      `Array.from(document.querySelectorAll('.logs-panel')).every(panel => panel.querySelectorAll('[role="option"]').length === 0) && document.querySelector('.main-screen__status').textContent === ''`,
+    );
     await click('[aria-label="Развернуть на рабочую область"]');
     await until(`!!document.querySelector('[aria-label="Восстановить раскладку"]')`);
     assert.equal(
@@ -584,12 +675,32 @@ runDesktop({
     await until(
       `document.querySelectorAll('.dv-tab').length === 0 && document.body.innerText.includes('Все панели закрыты')`,
     );
-    await click(addPanel);
-    await until(`!!document.querySelector('.ant-dropdown-menu-item')`);
-    await evaluate(
-      `Array.from(document.querySelectorAll('.ant-dropdown-menu-item')).find(item => item.textContent.includes('Логи')).click()`,
+    await evaluate(`fetch('/test/logs/status-without-panels', { method: 'POST' })`);
+    await until(
+      `document.querySelector('.main-screen__status').textContent === 'status-without-panels'`,
     );
+    // With no panels, the status creates a log panel; subsequent clicks reuse it.
+    await click('.main-screen__status-message');
     await until(`document.querySelectorAll('.dv-tab').length === 1`);
+    await until(
+      `document.querySelector('.logs-panel__message')?.textContent === 'status-without-panels'`,
+    );
+    await click('.main-screen__status-message');
+    assert.equal(await evaluate(`document.querySelectorAll('.dv-tab').length`), 1);
+    await click('[aria-label="Дополнительные действия"]');
+    await until(
+      `Array.from(document.querySelectorAll('.ant-dropdown-menu-item')).some(item => item.textContent === 'Открыть папку логов')`,
+    );
+    await evaluate(
+      `Array.from(document.querySelectorAll('.ant-dropdown-menu-item')).find(item => item.textContent === 'Открыть папку логов').click()`,
+    );
+    await click('[aria-label="Дополнительные действия"]');
+    await until(
+      `Array.from(document.querySelectorAll('.ant-dropdown-menu-item')).some(item => item.textContent === 'Открыть текущий файл логов')`,
+    );
+    await evaluate(
+      `Array.from(document.querySelectorAll('.ant-dropdown-menu-item')).find(item => item.textContent === 'Открыть текущий файл логов').click()`,
+    );
     const applicationAtExit = await openSettingsWindow('application');
     const projectAtExit = await openSettingsWindow('project');
     await verifySettingsWindow(applicationAtExit, 'application');

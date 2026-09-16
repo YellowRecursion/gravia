@@ -113,12 +113,12 @@ runDesktop(electron)
         );
       const component = path.join(source, 'renderer/app/ui/AppTitleBar.tsx');
       const original = fs.readFileSync(component, 'utf8');
-      assert.ok(original.includes('<header className="app-title-bar">'));
+      assert.ok(original.includes('className="app-title-bar"'));
       fs.writeFileSync(
         component,
         original.replace(
-          '<header className="app-title-bar">',
-          '<header className="app-title-bar" data-hmr-smoke="verified">',
+          'className="app-title-bar"',
+          'className="app-title-bar" data-hmr-smoke="verified"',
         ),
       );
       for (const target of [window, settings]) {

@@ -162,6 +162,11 @@ export async function initializeI18n() {
           },
           logPanel: {
             clear: 'Очистить журнал',
+            loading: 'Загрузка журнала…',
+            empty: 'Нет сообщений',
+            loadError: 'Нет связи с журналом. Повторное подключение…',
+            clearError: 'Не удалось очистить журнал. Повторите попытку.',
+            openError: 'Не удалось открыть файл или папку логов.',
             more: 'Дополнительные действия',
             openFolder: 'Открыть папку логов',
             openCurrentFile: 'Открыть текущий файл логов',
@@ -375,6 +380,11 @@ export async function initializeI18n() {
           },
           logPanel: {
             clear: 'Clear journal',
+            loading: 'Loading logs…',
+            empty: 'No messages',
+            loadError: 'Log journal unavailable. Reconnecting…',
+            clearError: 'Could not clear the journal. Please try again.',
+            openError: 'Could not open the log file or folder.',
             more: 'More actions',
             openFolder: 'Open logs folder',
             openCurrentFile: 'Open current log file',

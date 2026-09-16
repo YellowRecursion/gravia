@@ -3,6 +3,7 @@ using System.Text.Json;
 using ActualLab.Rpc.Server;
 using Gravia.Application.Projects.Services;
 using Gravia.Application.Storage;
+using Gravia.Application.Logging;
 using Gravia.Host.Desktop;
 using Gravia.Infrastructure.Storage;
 using Microsoft.AspNetCore.Builder;
@@ -38,8 +39,11 @@ public sealed class ProjectsDesktopTests
 
             var builder = WebApplication.CreateBuilder();
             builder.Logging.ClearProviders();
+            builder.Logging.SetMinimumLevel(LogLevel.Warning);
             builder.WebHost.ConfigureKestrel(server => server.Listen(IPAddress.Loopback, 0));
             builder.Services.AddHostServices();
+            var logFiles = new RecordingLogFiles();
+            builder.Services.AddSingleton<LogFileActions>(logFiles);
             builder.Services.AddKeyedSingleton<IDataStore>(DataStoreKey.Application,
                 (_, _) => new FileDataStore(Path.Combine(directory, "application")));
             await using (var app = builder.Build())
@@ -49,10 +53,20 @@ public sealed class ProjectsDesktopTests
                 app.MapGet("/", () => Results.File(Path.Combine(desktop, "dist", "index.html"), "text/html"));
                 app.UseWebSockets();
                 app.MapRpcWebSocketServer();
+                // Test-only log source, never installed by the production Host.
+                app.MapPost("/test/logs/{command}", (string command, ILogJournal journal) =>
+                {
+                    var count = command switch { "bulk" => 50000, "burst" => 100, _ => 1 };
+                    for (var i = 0; i < count; i++)
+                        journal.TryWrite(new(LogLevel.Error, "Smoke.Model",
+                            command is "bulk" or "burst" ? "Repeated NRE" : command,
+                            Exception: "System.NullReferenceException: input is null\n at Model.Calculate()"));
+                    return Results.Ok(journal.GetState());
+                });
                 await app.StartAsync();
                 try
                 {
-                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
                     await using var electron = await ElectronSession.StartAsync(
                         new DesktopOptions { AppDirectory = shell }, new Uri(app.Urls.Single()),
                         NullLogger.Instance, timeout.Token);
@@ -63,6 +77,7 @@ public sealed class ProjectsDesktopTests
                     using var result = JsonDocument.Parse(resultText);
                     Assert.True(result.RootElement.GetProperty("success").GetBoolean(), resultText);
                     Assert.Equal(0, electron.ExitCode);
+                    Assert.Equal(new[] { false, true }, logFiles.Opened);
                     Assert.Equal("Бета", ProjectSession.Current?.Name);
                     Assert.True(Directory.Exists(Path.Combine(directory, "projects", "Альфа")));
                     Assert.True(Directory.Exists(Path.Combine(directory, "projects", "Бета")));
@@ -75,6 +90,12 @@ public sealed class ProjectsDesktopTests
             // Only this test's freshly allocated temporary directory is removed.
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    private sealed class RecordingLogFiles : LogFileActions
+    {
+        public List<bool> Opened { get; } = [];
+        public override void Open(bool currentFile) => Opened.Add(currentFile);
     }
 }
 

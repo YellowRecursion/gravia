@@ -16,6 +16,14 @@ export type PanelKind = keyof typeof panelTypes;
 export const panelKinds = Object.keys(panelTypes) as PanelKind[];
 export interface WorkspacePanelParams {
   kind: PanelKind;
+  revealLog?: LogRevealRequest;
+}
+export interface LogTarget {
+  journalId: string;
+  sequence: number;
+}
+export interface LogRevealRequest extends LogTarget {
+  requestId: string;
 }
 
 export function addWorkspacePanel(

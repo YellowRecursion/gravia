@@ -34,4 +34,5 @@ export interface LogJournalApi {
   GetState(): Promise<RpcResult<LogState>>;
   Read(journalId: string | null, afterSequence: number): Promise<RpcResult<LogBatch>>;
   Clear(): Promise<RpcResult>;
+  OpenLocation(currentFile: boolean): Promise<RpcResult>;
 }

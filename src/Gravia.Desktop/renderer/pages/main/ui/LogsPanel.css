@@ -35,25 +35,43 @@
   user-select: none;
   height: 100%;
   overflow: auto;
+  overflow-anchor: none;
 }
 
-.logs-panel__list .ant-table-tbody > .logs-panel__row > td {
+.logs-panel__row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  column-gap: 2px;
+  align-items: center;
+  box-sizing: border-box;
   padding: 1px 6px;
   line-height: 18px;
   border-bottom: 1px solid var(--gravia-border-secondary);
   cursor: pointer;
 }
 
-.logs-panel__list .ant-table-tbody > .logs-panel__row--selected > td {
+.logs-panel__row--selected {
   background: var(--gravia-primary-bg);
 }
 
-.logs-panel__list .ant-table-tbody > .logs-panel__row > td:first-child {
-  padding-right: 0;
+.logs-panel__count {
+  padding-inline: 5px;
+  border-radius: 6px;
+  background: var(--gravia-bg-layout);
+  font-variant-numeric: tabular-nums;
 }
 
-.logs-panel__list .ant-table-tbody > .logs-panel__row > td:nth-child(2) {
-  padding-left: 2px;
+.logs-panel__empty {
+  padding: 12px;
+  color: var(--gravia-text-tertiary);
+}
+
+.logs-panel__toggle--active {
+  background: var(--gravia-primary-bg);
+}
+
+.logs-panel__level--off {
+  opacity: 0.4;
 }
 
 .logs-panel__row:focus-visible {

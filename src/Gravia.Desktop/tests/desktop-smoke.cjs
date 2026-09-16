@@ -185,6 +185,8 @@ async function scenario(action, hotReload = false) {
     [
       'test',
       path.resolve(desktop, '../../tests/Gravia.Host.Tests/Gravia.Host.Tests.csproj'),
+      '-c',
+      'Release',
       '--filter',
       'FullyQualifiedName~ProjectsDesktopTests',
       '-p:SkipDesktopRestore=true',

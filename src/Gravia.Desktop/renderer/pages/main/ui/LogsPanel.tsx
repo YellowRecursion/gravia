@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   ArrowDownOutlined,
   ClearOutlined,
@@ -10,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import {
   Button,
+  Alert,
   ConfigProvider,
   Descriptions,
   Dropdown,
@@ -17,66 +19,120 @@ import {
   Input,
   Space,
   Splitter,
-  Table,
   Tooltip,
   Typography,
   theme,
 } from 'antd';
 import { useTranslation } from 'react-i18next';
-import type { LogEntry } from '@/shared/api';
-import { createLogsPreview } from './logs-preview';
+import type { IDockviewPanelProps } from 'dockview-react';
+import { logJournalApi, unwrapRpcResult, useClearLogJournal, useLogJournal } from '@/shared/api';
+import { createLogViewStore } from './log-projection';
+import { VirtualLogList } from './VirtualLogList';
 import { selectLog, type LogSelection } from './log-selection';
 import { displayMessage, levelNames } from './log-presentation';
 import { LogLevelIcon } from './LogLevelIcon';
+import type { WorkspacePanelParams } from './panel-types';
 import './LogsPanel.css';
 
-export function LogsPanel() {
+export function LogsPanel({ params }: IDockviewPanelProps<WorkspacePanelParams>) {
+  const reveal = params.revealLog;
+  const [handledReveal, setHandledReveal] = useState<string>();
   const { t, i18n } = useTranslation();
   const { token } = theme.useToken();
+  const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
+  const [levels, setLevels] = useState(63);
+  const [collapse, setCollapse] = useState(false);
+  const [follow, setFollow] = useState(true);
+  const snapshot = useLogJournal();
+  const viewStore = useMemo(
+    () => createLogViewStore({ search: deferredSearch, levels, collapse }),
+    [deferredSearch, levels, collapse],
+  );
+  const view = useSyncExternalStore(viewStore.subscribe, viewStore.getSnapshot);
+  useEffect(() => {
+    if (snapshot) viewStore.offer(snapshot);
+  }, [viewStore, snapshot]);
+  const rows = view?.rows ?? [];
+  const clear = useClearLogJournal();
+  const openLocation = useMutation({
+    mutationFn: async (currentFile: boolean) =>
+      unwrapRpcResult(await logJournalApi.OpenLocation(currentFile)),
+  });
   const timeOptions = {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     hourCycle: 'h23',
   } as const;
-  const timeFormatter = new Intl.DateTimeFormat(i18n.language, timeOptions);
+  const timeFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(i18n.language, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23',
+      }),
+    [i18n.language],
+  );
   const detailTimeFormatter = new Intl.DateTimeFormat(i18n.language, {
     ...timeOptions,
     fractionalSecondDigits: 3,
   });
-  const entries = createLogsPreview(t);
-  // Only preview selection is interactive; toolbar commands have no journal connection yet.
-  const [selection, setSelection] = useState<LogSelection>({ ids: [6], anchor: 6 });
-  const selectedEntries = entries.filter((entry) => selection.ids.includes(entry.sequence));
+  const [storedSelection, setSelection] = useState<{ journalId?: string; value: LogSelection }>({
+    value: { ids: [], anchor: null },
+  });
+  // A navigation request belongs to this panel only and is consumed once, including repeat clicks.
+  if (reveal && reveal.requestId !== handledReveal) {
+    setHandledReveal(reveal.requestId);
+    setSearch('');
+    setLevels(63);
+    setCollapse(false);
+    setFollow(false);
+    setSelection({
+      journalId: reveal.journalId,
+      value: { ids: [reveal.sequence], anchor: reveal.sequence },
+    });
+  }
+  const selection =
+    storedSelection.journalId === view?.journalId
+      ? storedSelection.value
+      : { ids: [], anchor: null };
+  const wanted = new Set(selection.ids);
+  const selectedRows = wanted.size ? rows.filter((row) => wanted.has(row.id)) : [];
+  const selectedIds = new Set(selectedRows.map((row) => row.id));
+  const selectedEntries = selectedRows.map((row) => row.entry);
   const selected = selectedEntries.length === 1 ? selectedEntries[0] : undefined;
   function selectEntry(
     sequence: number,
     modifiers: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
   ) {
-    setSelection((previous) =>
-      selectLog(
-        previous,
-        entries.map((entry) => entry.sequence),
+    setSelection({
+      journalId: view?.journalId,
+      value: selectLog(
+        { ids: [...selectedIds], anchor: selection.anchor },
+        rows.map((row) => row.id),
         sequence,
         modifiers,
       ),
-    );
+    });
   }
-  const copyText = selectedEntries
-    .map((entry) =>
-      [
-        `${t(`logPanel.levels.${levelNames[entry.level]}`)} · ${detailTimeFormatter.format(new Date(entry.timestamp))}`,
-        displayMessage(entry),
-        '',
-        `${t('logPanel.source')}: ${entry.category}`,
-        `${t('logPanel.event')}: ${entry.eventId.name ?? ''} (${entry.eventId.id})`,
-        ...(entry.exception ? ['', `${t('logPanel.exception')}:`, entry.exception] : []),
-        '',
-        `${t('logPanel.properties')}:`,
-        ...Object.entries(entry.properties).map(([key, value]) => `${key}: ${value ?? 'null'}`),
-      ].join('\n'),
-    )
-    .join('\n\n────────────\n\n');
+  const copyText = () =>
+    selectedEntries
+      .map((entry) =>
+        [
+          `${t(`logPanel.levels.${levelNames[entry.level]}`)} · ${detailTimeFormatter.format(new Date(entry.timestamp))}`,
+          displayMessage(entry),
+          '',
+          `${t('logPanel.source')}: ${entry.category}`,
+          `${t('logPanel.event')}: ${entry.eventId.name ?? ''} (${entry.eventId.id})`,
+          ...(entry.exception ? ['', `${t('logPanel.exception')}:`, entry.exception] : []),
+          '',
+          `${t('logPanel.properties')}:`,
+          ...Object.entries(entry.properties).map(([key, value]) => `${key}: ${value ?? 'null'}`),
+        ].join('\n'),
+      )
+      .join('\n\n────────────\n\n');
   return (
     <section
       className="workspace-panel logs-panel"
@@ -92,7 +148,7 @@ export function LogsPanel() {
         ) {
           return;
         }
-        event.clipboardData.setData('text/plain', copyText);
+        event.clipboardData.setData('text/plain', copyText());
         event.preventDefault();
         event.stopPropagation();
       }}
@@ -105,6 +161,8 @@ export function LogsPanel() {
               type="text"
               icon={<ClearOutlined />}
               aria-label={t('logPanel.clear')}
+              loading={clear.isPending}
+              onClick={() => clear.mutate()}
             />
           </Tooltip>
           <Tooltip title={t('logPanel.collapse')}>
@@ -113,6 +171,9 @@ export function LogsPanel() {
               type="text"
               icon={<VerticalAlignMiddleOutlined />}
               aria-label={t('logPanel.collapse')}
+              aria-pressed={collapse}
+              onClick={() => setCollapse((value) => !value)}
+              className={collapse ? 'logs-panel__toggle--active' : undefined}
             />
           </Tooltip>
           <Tooltip title={t('logPanel.follow')}>
@@ -121,6 +182,9 @@ export function LogsPanel() {
               type="text"
               icon={<ArrowDownOutlined />}
               aria-label={t('logPanel.follow')}
+              aria-pressed={follow}
+              onClick={() => setFollow((value) => !value)}
+              className={follow ? 'logs-panel__toggle--active' : undefined}
             />
           </Tooltip>
         </Space.Compact>
@@ -131,6 +195,8 @@ export function LogsPanel() {
           placeholder={t('logPanel.search')}
           aria-label={t('logPanel.search')}
           allowClear
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
         />
         <Space.Compact className="logs-panel__levels">
           {levelNames.map((level, index) => (
@@ -140,8 +206,11 @@ export function LogsPanel() {
                 type="text"
                 icon={<LogLevelIcon level={index} />}
                 aria-label={t(`logPanel.levels.${level}`)}
+                aria-pressed={(levels & (1 << index)) !== 0}
+                onClick={() => setLevels((value) => value ^ (1 << index))}
+                className={(levels & (1 << index)) === 0 ? 'logs-panel__level--off' : undefined}
               >
-                {entries.filter((entry) => entry.level === index).length}
+                {view?.counts[index] ?? 0}
               </Button>
             </Tooltip>
           ))}
@@ -150,6 +219,7 @@ export function LogsPanel() {
           trigger={['click']}
           placement="bottomRight"
           menu={{
+            onClick: ({ key }) => openLocation.mutate(key === 'file'),
             items: [
               { key: 'folder', icon: <FolderOpenOutlined />, label: t('logPanel.openFolder') },
               { key: 'file', icon: <FileTextOutlined />, label: t('logPanel.openCurrentFile') },
@@ -162,72 +232,48 @@ export function LogsPanel() {
             icon={<MoreOutlined />}
             aria-label={t('logPanel.more')}
             title={t('logPanel.more')}
+            loading={openLocation.isPending}
           />
         </Dropdown>
       </div>
+      {(view?.error || clear.isError || openLocation.isError) && (
+        <Alert
+          type="error"
+          showIcon
+          title={t(
+            clear.isError
+              ? 'logPanel.clearError'
+              : openLocation.isError
+                ? 'logPanel.openError'
+                : 'logPanel.loadError',
+          )}
+        />
+      )}
       <ConfigProvider theme={{ token: { fontFamily: token.fontFamilyCode } }}>
         <div className="logs-panel__body" style={{ fontFamily: token.fontFamilyCode }}>
           <Splitter orientation="vertical">
             <Splitter.Panel defaultSize="60%" min={60}>
-              <div
-                className="logs-panel__list"
-                onClick={(event) => {
-                  if (
-                    event.target instanceof Element &&
-                    !event.target.closest('.logs-panel__row')
-                  ) {
-                    setSelection({ ids: [], anchor: null });
-                  }
-                }}
-              >
-                <Table<LogEntry>
-                  size="small"
-                  showHeader={false}
-                  pagination={false}
-                  rowKey="sequence"
-                  tableLayout="fixed"
-                  dataSource={entries}
-                  rowClassName={(entry) =>
-                    selection.ids.includes(entry.sequence)
-                      ? 'logs-panel__row logs-panel__row--selected'
-                      : 'logs-panel__row'
-                  }
-                  onRow={(entry) => ({
-                    tabIndex: 0,
-                    'aria-selected': selection.ids.includes(entry.sequence),
-                    onClick: (event) => {
-                      if (event.currentTarget instanceof HTMLElement) {
-                        event.currentTarget.focus({ preventScroll: true });
-                      }
-                      selectEntry(entry.sequence, event);
-                    },
-                    onKeyDown: (event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        selectEntry(entry.sequence, event);
-                      }
-                    },
-                  })}
-                  columns={[
-                    {
-                      key: 'level',
-                      width: 24,
-                      render: (_, entry) => <LogLevelIcon level={entry.level} />,
-                    },
-                    {
-                      key: 'message',
-                      render: (_, entry) => (
-                        <div className="logs-panel__line" title={entry.message}>
-                          <span className="logs-panel__time">
-                            {timeFormatter.format(new Date(entry.timestamp))}
-                          </span>
-                          <span className="logs-panel__message">{displayMessage(entry)}</span>
-                        </div>
-                      ),
-                    },
-                  ]}
-                />
-              </div>
+              <VirtualLogList
+                rows={rows}
+                reveal={
+                  reveal?.journalId === view?.journalId &&
+                  !collapse &&
+                  deferredSearch === '' &&
+                  levels === 63
+                    ? reveal
+                    : undefined
+                }
+                selected={selectedIds}
+                follow={follow}
+                onFollow={setFollow}
+                onSelect={selectEntry}
+                onClearSelection={() =>
+                  setSelection({ journalId: view?.journalId, value: { ids: [], anchor: null } })
+                }
+                timeFormatter={timeFormatter}
+                label={t('workspace.logs')}
+                emptyText={t(!view ? 'logPanel.loading' : 'logPanel.empty')}
+              />
             </Splitter.Panel>
             <Splitter.Panel min={80} collapsible>
               <div className="logs-panel__details" aria-label={t('logPanel.details')}>
@@ -281,7 +327,7 @@ export function LogsPanel() {
                             {
                               key: 'event',
                               label: t('logPanel.event'),
-                              children: `${selected.eventId.name} (${selected.eventId.id})`,
+                              children: `${selected.eventId.name ?? ''} (${selected.eventId.id})`,
                             },
                           ]}
                         />

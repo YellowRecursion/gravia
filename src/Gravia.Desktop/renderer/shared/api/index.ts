@@ -21,6 +21,7 @@ export type {
 export type { ProjectDto, ProjectsApi } from './projects';
 export { fusionHub, fusionPeer } from './fusion';
 export { logJournalApi } from './log-journal';
+export { useLogJournal, useClearLogJournal } from './use-log-journal';
 export { observeLogJournal, logJournalQueryKey } from './log-journal-sync';
 export type { LogJournalSnapshot } from './log-journal-sync';
 export type { LogEntry, LogState, LogBatch, LogJournalApi } from './log-journal-contract';

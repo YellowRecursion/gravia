@@ -1,6 +1,7 @@
 using ActualLab.Fusion;
 using Gravia.Application.Logging;
 using MediatR;
+using Gravia.Host.Desktop;
 
 namespace Gravia.Host.Fusion.Logging;
 
@@ -8,7 +9,7 @@ namespace Gravia.Host.Fusion.Logging;
 /// Only the small state is a compute result. Reads use ordinary RPC, avoiding cached copies
 /// of the history for every cursor. A Read result always carries its own authoritative bounds.
 /// </summary>
-public class LogJournalApi(ILogJournal journal, IServiceScopeFactory scopeFactory) : IComputeService
+public class LogJournalApi(ILogJournal journal, IServiceScopeFactory scopeFactory, LogFileActions files) : IComputeService
 {
     [ComputeMethod]
     public virtual Task<RpcResult<LogState>> GetState(CancellationToken cancellationToken = default)
@@ -28,5 +29,12 @@ public class LogJournalApi(ILogJournal journal, IServiceScopeFactory scopeFactor
         await using var scope = scopeFactory.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<ISender>().Send(new ClearLogCommand(), cancellationToken);
         return RpcResult.Success();
+    }
+
+    public Task<RpcResult> OpenLocation(bool currentFile, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        files.Open(currentFile);
+        return Task.FromResult(RpcResult.Success());
     }
 }
