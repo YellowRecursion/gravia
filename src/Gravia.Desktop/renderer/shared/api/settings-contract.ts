@@ -1,4 +1,5 @@
 import type { RpcResult } from './rpc-result';
+import type { ValueType } from '@/shared/lib';
 
 export interface LocalizedTextDto {
   readonly translations: Readonly<Record<string, string>>;
@@ -15,6 +16,8 @@ export interface SettingDto {
   readonly summary: SettingSummaryDto;
   readonly value: unknown;
   readonly defaultValue: unknown;
+  readonly valueType: ValueType;
+  readonly traits: readonly unknown[];
 }
 
 export interface SettingsApi {

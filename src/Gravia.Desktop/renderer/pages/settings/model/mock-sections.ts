@@ -1,12 +1,16 @@
 import type { TFunction } from 'i18next';
 import { matchesSettingSearch } from './settings-search';
+import { nullableExamples } from './nullable-examples';
 
 export const mockSettingsKey = 'mock-controls';
-export const mockSettingsSections = ['basic', 'modifiers', 'collections'] as const;
+export const mockSettingsSections = ['basic', 'modifiers', 'collections', 'nullable'] as const;
 export type MockSection = (typeof mockSettingsSections)[number];
 
 // Search metadata for the temporary controls, including the descriptions shown in tooltips.
 const mockSearchEntries: Record<MockSection, readonly (readonly [string, string?])[]> = {
+  nullable: nullableExamples.map(
+    (example) => [`nullableExamples.${example.id}`, 'nullableHint'] as const,
+  ),
   basic: [
     ['text', 'StringSetting'],
     ['integer', 'IntSetting'],

@@ -1,2 +1,2 @@
 export { useSetting, useSettingsCatalog, settingsApi } from './model/use-settings';
-export { getBuiltinEditor, themePreference, languagePreference } from './model/builtin-editors';
+export { themePreference, languagePreference } from './model/appearance-preferences';

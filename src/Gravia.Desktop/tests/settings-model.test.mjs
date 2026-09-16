@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  getBuiltinEditor,
   languagePreference,
   themePreference,
-} from '../renderer/entities/settings/model/builtin-editors.ts';
+} from '../renderer/entities/settings/model/appearance-preferences.ts';
 import {
   buildCategories,
   filterCategories,
@@ -45,21 +44,6 @@ test('section search preserves matching branches and ancestors without changing 
   assert.deepEqual(found[0].settings, categories[0].settings);
   assert.equal(matchesSettingSearch(' ТЁМН ', 'Тема', 'Светлая или тёмная палитра'), true);
   assert.equal(matchesSettingSearch('ТЁМН', 'Язык', 'Язык интерфейса'), false);
-});
-
-test('temporary editors are limited to the two application settings, never project settings', () => {
-  assert.deepEqual(
-    getBuiltinEditor('application', 'gravia.theme').map((item) => item.value),
-    ['system', 'light', 'dark'],
-  );
-  assert.deepEqual(
-    getBuiltinEditor('application', 'gravia.language').map((item) => item.value),
-    ['ru', 'en'],
-  );
-  assert.equal(getBuiltinEditor('project', 'gravia.theme'), undefined);
-  assert.equal(getBuiltinEditor('application', 'addon.option'), undefined);
-  assert.equal(getBuiltinEditor('application', 'toString'), undefined);
-  assert.equal(getBuiltinEditor('application', '__proto__'), undefined);
 });
 
 test('unknown persisted values have safe appearance fallbacks without rewriting the Host', () => {

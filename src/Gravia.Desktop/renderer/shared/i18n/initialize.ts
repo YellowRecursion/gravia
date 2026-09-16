@@ -11,6 +11,24 @@ export async function initializeI18n() {
       ru: {
         translation: {
           applicationName: 'Gravia Lab',
+          valueEditor: {
+            apply: 'Применить',
+            refreshFailed:
+              'Изменение отправлено, но не удалось загрузить подтверждённое значение. Повторите загрузку.',
+            cancel: 'Отменить',
+            add: 'Добавить элемент',
+            key: 'Ключ',
+            keyAt: 'Ключ строки {{index}}',
+            removeAt: 'Удалить строку {{index}}',
+            setValue: 'Задать значение',
+            setNull: 'Очистить (null)',
+            invalidValue: 'Значение не соответствует типу или допустимому диапазону.',
+            duplicateKey: 'Ключи словаря должны быть уникальными.',
+            invalidChoice: 'Выберите одно из допустимых значений.',
+            unknownChoice: 'Текущее значение вне списка: {{value}}',
+            conflict:
+              'Настройка изменилась в другом окне. Отмените черновик, чтобы загрузить новое значение.',
+          },
           projects: {
             recentTitle: 'Недавние проекты',
             createTitle: 'Создать проект',
@@ -69,9 +87,23 @@ export async function initializeI18n() {
                 basic: 'Базовые типы',
                 modifiers: 'Модификаторы',
                 collections: 'Коллекции',
+                nullable: 'Nullable · значение или null',
               },
               notice:
                 'Макет контролов. Изменения не сохраняются и сбрасываются при выходе из раздела.',
+              nullableHint:
+                'Nullable: можно задать значение или null. В коллекциях элементы тоже допускают null.',
+              previewValue: 'Значение:',
+              nullableExamples: {
+                nullString: 'Строка · изначально null',
+                emptyString: 'Строка · пустая, но не null',
+                zero: 'Целое число · ноль',
+                nullNumber: 'Дробное число · изначально null',
+                falseBoolean: 'Логическое значение · false',
+                nullableList: 'Список с nullable-элементами',
+                nullableDictionary: 'Словарь с nullable-значениями',
+                nullableChoice: 'Выбор числа или null',
+              },
               reset: 'Сбросить макет',
               text: 'Строка',
               integer: 'Целое число',
@@ -124,6 +156,7 @@ export async function initializeI18n() {
             },
             errors: {
               invalid_setting_value: 'Недопустимое значение настройки.',
+              value_not_in_choices: 'Значение отсутствует среди допустимых вариантов.',
               validation_failed: 'Проверьте значение настройки.',
             },
           },
@@ -148,6 +181,24 @@ export async function initializeI18n() {
       en: {
         translation: {
           applicationName: 'Gravia Lab',
+          valueEditor: {
+            apply: 'Apply',
+            refreshFailed:
+              'The change was sent, but the confirmed value could not be loaded. Retry loading.',
+            cancel: 'Cancel',
+            add: 'Add item',
+            key: 'Key',
+            keyAt: 'Key of row {{index}}',
+            removeAt: 'Remove row {{index}}',
+            setValue: 'Set value',
+            setNull: 'Clear (null)',
+            invalidValue: 'Value does not match its type or supported range.',
+            duplicateKey: 'Dictionary keys must be unique.',
+            invalidChoice: 'Select one of the allowed values.',
+            unknownChoice: 'Current value outside choices: {{value}}',
+            conflict:
+              'This setting changed in another window. Cancel your draft to load the new value.',
+          },
           projects: {
             recentTitle: 'Recent projects',
             createTitle: 'Create project',
@@ -205,9 +256,23 @@ export async function initializeI18n() {
                 basic: 'Basic types',
                 modifiers: 'Modifiers',
                 collections: 'Collections',
+                nullable: 'Nullable · value or null',
               },
               notice:
                 'Control preview. Changes are not saved and reset when you leave this section.',
+              nullableHint:
+                'Nullable: accepts a value or null. Collection elements also accept null.',
+              previewValue: 'Value:',
+              nullableExamples: {
+                nullString: 'String · initially null',
+                emptyString: 'String · empty, not null',
+                zero: 'Integer · zero',
+                nullNumber: 'Number · initially null',
+                falseBoolean: 'Boolean · false',
+                nullableList: 'List with nullable elements',
+                nullableDictionary: 'Dictionary with nullable values',
+                nullableChoice: 'Number choice or null',
+              },
               reset: 'Reset mock',
               text: 'String',
               integer: 'Integer',
@@ -261,6 +326,7 @@ export async function initializeI18n() {
             },
             errors: {
               invalid_setting_value: 'Invalid setting value.',
+              value_not_in_choices: 'Value is not among the allowed choices.',
               validation_failed: 'Check the setting value.',
             },
           },

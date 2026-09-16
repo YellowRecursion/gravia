@@ -1,11 +1,20 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ReloadOutlined, UndoOutlined } from '@ant-design/icons';
-import { Button, Flex, Select, Spin, Tooltip, Typography } from 'antd';
+import { Button, Flex, Spin, Tooltip, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { getBuiltinEditor, settingsApi, useSetting } from '@/entities/settings';
+import { settingsApi, useSetting } from '@/entities/settings';
 import { getRpcFieldErrors, RpcError, unwrapRpcResult } from '@/shared/api';
-import type { SettingsScope, SettingSummaryDto } from '@/shared/api';
+import type { SettingsScope, SettingDto, SettingSummaryDto } from '@/shared/api';
+import {
+  createValueDraft,
+  equalValue,
+  parseValueType,
+  readValueDraft,
+  resolveValueTraits,
+} from '@/shared/lib';
+import type { ValueDraft } from '@/shared/lib';
+import { ValueClearButton, ValueEditor } from '@/shared/ui';
 import { SettingItem } from './SettingItem';
 import { localizedText } from '../model/categories';
 
@@ -18,65 +27,20 @@ export function SettingField({
 }) {
   const { t, i18n } = useTranslation();
   const query = useSetting(scope, summary.id);
-  const running = useRef(false);
-  const editor = getBuiltinEditor(scope, summary.id);
-  const mutation = useMutation({
-    mutationFn: async (action: { value: string } | { reset: true }) => {
-      const api = settingsApi(scope);
-      unwrapRpcResult(
-        await ('reset' in action
-          ? api.ResetValue(summary.id)
-          : api.SetValue(summary.id, action.value)),
-      );
-    },
-  });
-  async function change(action: { value: string } | { reset: true }) {
-    if (running.current || !editor) return;
-    running.current = true;
-    try {
-      await mutation.mutateAsync(action);
-    } catch {
-      /* Render the mutation error next to the field. */
-    } finally {
-      running.current = false;
-    }
-  }
-  const language = i18n.resolvedLanguage ?? 'ru';
-  const title = localizedText(summary.title, language);
-  const error = mutation.error;
-  const code =
-    getRpcFieldErrors(error).find((item) => item.field.toLowerCase() === 'value')?.code ??
-    (error instanceof RpcError ? error.code : 'saveError');
-  const options = editor?.map((option) => ({ value: option.value, label: t(option.labelKey) }));
-  const value = query.data?.value;
-  // Never coerce or overwrite a value written by a newer Host that this temporary UI does not know.
-  if (typeof value === 'string' && options && !options.some((option) => option.value === value)) {
-    options.push({ value, label: t('settings.unknownValue', { value }) });
-  }
+  const title = localizedText(summary.title, i18n.resolvedLanguage ?? 'ru');
+  if (query.data)
+    return (
+      <LoadedSettingField
+        scope={scope}
+        data={query.data}
+        refresh={async () => {
+          const result = await query.refetch();
+          return !result.isError;
+        }}
+      />
+    );
   return (
-    <SettingItem
-      label={title}
-      htmlFor={summary.id}
-      extra={summary.description ? localizedText(summary.description, language) : undefined}
-      action={
-        query.data && editor ? (
-          <Tooltip title={t('settings.reset')}>
-            <Button
-              type="text"
-              size="small"
-              icon={<UndoOutlined />}
-              aria-label={t('settings.resetField', { name: title })}
-              disabled={mutation.isPending || value === query.data.defaultValue}
-              onClick={() => void change({ reset: true })}
-            />
-          </Tooltip>
-        ) : undefined
-      }
-      validateStatus={error ? 'error' : undefined}
-      help={
-        error ? t(`settings.errors.${code}`, { defaultValue: t('settings.saveError') }) : undefined
-      }
-    >
+    <SettingItem label={title}>
       {query.isPending ? (
         <Spin size="small" />
       ) : query.isError ? (
@@ -88,24 +52,190 @@ export function SettingField({
             onClick={() => void query.refetch()}
           />
         </Flex>
-      ) : !query.data ? (
-        <Typography.Text type="secondary">{t('settings.missing')}</Typography.Text>
-      ) : !editor ? (
-        <Typography.Text type="secondary">{t('settings.unsupported')}</Typography.Text>
       ) : (
-        <Flex gap="small" align="center">
-          <Select
-            id={summary.id}
-            aria-label={title}
-            style={{ width: '100%' }}
-            value={typeof value === 'string' ? value : undefined}
-            placeholder={t('settings.unsupported')}
-            options={options}
-            loading={mutation.isPending}
-            disabled={mutation.isPending}
-            onChange={(next: string) => void change({ value: next })}
-          />
+        <Typography.Text type="secondary">{t('settings.missing')}</Typography.Text>
+      )}
+    </SettingItem>
+  );
+}
+
+type Edit = { base: SettingDto; draft: ValueDraft };
+type Change = { value: unknown } | { reset: true };
+
+function LoadedSettingField({
+  scope,
+  data,
+  refresh,
+}: {
+  scope: SettingsScope;
+  data: SettingDto;
+  refresh: () => Promise<boolean>;
+}) {
+  const { t, i18n } = useTranslation();
+  // Only unfinished input lives locally. Clean fields use the latest Query value.
+  const [edit, setEdit] = useState<Edit>();
+  const [saving, setSaving] = useState(false);
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const running = useRef(false);
+  const type = parseValueType(data.valueType);
+  const traits = Array.isArray(data.traits) ? data.traits : [];
+  const draft = edit?.draft ?? (type ? createValueDraft(type, data.value, traits) : undefined);
+  const result = type && draft ? readValueDraft(type, draft, traits) : undefined;
+  const dirty = Boolean(edit && (!result?.ok || !equalValue(result.value, data.value)));
+  const conflict = Boolean(
+    edit &&
+    (!equalValue(edit.base.value, data.value) ||
+      !equalValue(edit.base.valueType, data.valueType) ||
+      !equalValue(edit.base.traits, data.traits)),
+  );
+  const mutation = useMutation({
+    mutationFn: async (action: Change) => {
+      const api = settingsApi(scope);
+      unwrapRpcResult(
+        await ('reset' in action
+          ? api.ResetValue(data.summary.id)
+          : api.SetValue(data.summary.id, action.value)),
+      );
+    },
+  });
+  async function save(action: Change) {
+    if (running.current) return;
+    running.current = true;
+    setSaving(true);
+    try {
+      await mutation.mutateAsync(action);
+      const confirmed = await refresh();
+      setRefreshFailed(!confirmed);
+      if (confirmed) setEdit(undefined);
+    } catch {
+      // Preserve rejected input; render the RPC error next to the editor.
+    } finally {
+      running.current = false;
+      setSaving(false);
+    }
+  }
+  const title = localizedText(data.summary.title, i18n.resolvedLanguage ?? 'ru');
+  const error = mutation.error;
+  const code =
+    getRpcFieldErrors(error).find((item) => item.field.toLowerCase() === 'value')?.code ??
+    (error instanceof RpcError ? error.code : 'saveError');
+  const message = error
+    ? t(`settings.errors.${code}`, { defaultValue: t('settings.saveError') })
+    : refreshFailed
+      ? t('valueEditor.refreshFailed')
+      : conflict && !saving
+        ? t('valueEditor.conflict')
+        : edit && result && !result.ok
+          ? t(`valueEditor.${result.error}`)
+          : undefined;
+  const choices = type ? resolveValueTraits(type, traits).choices : undefined;
+  function changeDraft(next: ValueDraft) {
+    if (!type || running.current) return;
+    mutation.reset();
+    setEdit({ base: edit?.base ?? data, draft: next });
+    const parsed = readValueDraft(type, next, traits);
+    if (!conflict && parsed.ok && (choices || type.kind === 'bool'))
+      void save({ value: parsed.value });
+  }
+  return (
+    <SettingItem
+      label={title}
+      htmlFor={data.summary.id}
+      multiline={!choices && (type?.kind === 'list' || type?.kind === 'dictionary')}
+      extra={
+        data.summary.description
+          ? localizedText(data.summary.description, i18n.resolvedLanguage ?? 'ru')
+          : undefined
+      }
+      action={
+        <Flex align="center" gap={4}>
+          <Tooltip title={t('settings.reset')}>
+            <Button
+              type="text"
+              size="small"
+              icon={<UndoOutlined />}
+              aria-label={t('settings.resetField', { name: title })}
+              disabled={
+                saving || refreshFailed || (!edit && equalValue(data.value, data.defaultValue))
+              }
+              onClick={() => void save({ reset: true })}
+            />
+          </Tooltip>
+          {type && draft && (
+            <ValueClearButton
+              type={type}
+              draft={draft}
+              traits={traits}
+              label={title}
+              disabled={saving || refreshFailed}
+              onChange={changeDraft}
+            />
+          )}
         </Flex>
+      }
+      validateStatus={message ? 'error' : undefined}
+      help={message}
+    >
+      {type && draft ? (
+        <Flex vertical gap="small">
+          <ValueEditor
+            clearInHeader
+            id={data.summary.id}
+            label={title}
+            type={type}
+            traits={traits}
+            draft={draft}
+            disabled={saving || refreshFailed}
+            onChange={changeDraft}
+          />
+          {edit && (
+            <Flex gap="small">
+              <Button
+                size="small"
+                type="primary"
+                loading={saving}
+                disabled={!dirty || conflict || !result?.ok || refreshFailed}
+                onClick={() => {
+                  if (result?.ok) void save({ value: result.value });
+                }}
+              >
+                {t('valueEditor.apply')}
+              </Button>
+              <Button
+                size="small"
+                disabled={saving || refreshFailed}
+                onClick={() => {
+                  setEdit(undefined);
+                  mutation.reset();
+                }}
+              >
+                {t('valueEditor.cancel')}
+              </Button>
+            </Flex>
+          )}
+        </Flex>
+      ) : (
+        <Flex vertical>
+          <Typography.Text type="secondary">{t('settings.unsupported')}</Typography.Text>
+          <Typography.Text code>{JSON.stringify(data.value)}</Typography.Text>
+        </Flex>
+      )}
+      {refreshFailed && (
+        <Button
+          size="small"
+          loading={saving}
+          onClick={() => {
+            setSaving(true);
+            void refresh()
+              .then((confirmed) => {
+                setRefreshFailed(!confirmed);
+                if (confirmed) setEdit(undefined);
+              })
+              .finally(() => setSaving(false));
+          }}
+        >
+          {t('projects.retry')}
+        </Button>
       )}
     </SettingItem>
   );

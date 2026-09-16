@@ -18,6 +18,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { SettingItem } from '../SettingItem';
 import { MockCollections } from './MockCollections';
+import { MockNullable } from './MockNullable';
 import type { MockSection } from '../../model/mock-sections';
 
 // Deliberately not registered with Host. Form owns these disposable examples while the mock is open.
@@ -66,6 +67,7 @@ export function MockSettings({ section }: { section: MockSection }) {
     value,
     label: t(`workspace.${value}`),
   }));
+  if (section === 'nullable') return <MockNullable />;
   return (
     <div className="settings-mock" data-mock-section={section}>
       <Flex vertical gap="small" style={{ marginBottom: 24 }}>
