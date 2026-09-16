@@ -3,6 +3,7 @@ using Gravia.Domain.Localization.Consts;
 using Gravia.Domain.Localization.Entities;
 using Gravia.Domain.Settings.Consts;
 using Gravia.Domain.Settings.Entities;
+using Gravia.Domain.Traits.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -18,13 +19,26 @@ public sealed class ApplicationSettings(
         "gravia.language",
         new LocalizedText(Langs.English, "Language").With(Langs.Russian, "Язык"),
         Langs.Russian,
-        SettingsUiPaths.Appearance);
+        SettingsUiPaths.Appearance,
+        traits:
+        [
+            new ChoiceTrait<string>(
+                new("ru", new LocalizedText("Русский")),
+                new("en", new LocalizedText("English")))
+        ]);
 
     public StringSetting Theme { get; } = new(
         "gravia.theme",
         new LocalizedText(Langs.English, "Theme").With(Langs.Russian, "Тема"),
         "system",
-        SettingsUiPaths.Appearance);
+        SettingsUiPaths.Appearance,
+        traits:
+        [
+            new ChoiceTrait<string>(
+                new("system", new LocalizedText(Langs.English, "System").With(Langs.Russian, "Системная")),
+                new("light", new LocalizedText(Langs.English, "Light").With(Langs.Russian, "Светлая")),
+                new("dark", new LocalizedText(Langs.English, "Dark").With(Langs.Russian, "Тёмная")))
+        ]);
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {

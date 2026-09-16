@@ -1,4 +1,5 @@
 using Gravia.Domain.Localization.Entities;
+using Gravia.Domain.Traits.Interfaces;
 
 namespace Gravia.Domain.Settings.Entities;
 
@@ -9,9 +10,14 @@ namespace Gravia.Domain.Settings.Entities;
 /// </remarks>
 public sealed class ListSetting<T> : Setting<IReadOnlyList<T>>
 {
-    public ListSetting(string id, LocalizedText title, IReadOnlyList<T> defaultValue, SettingsUiPath uiPath,
-        LocalizedText? description = null)
-        : base(id, title, defaultValue, uiPath, description)
+    public ListSetting(
+        string id,
+        LocalizedText title,
+        IReadOnlyList<T> defaultValue,
+        SettingsUiPath uiPath,
+        LocalizedText? description = null,
+        IReadOnlyList<ITrait>? traits = null)
+        : base(id, title, defaultValue, uiPath, description, traits)
     {
     }
 }
