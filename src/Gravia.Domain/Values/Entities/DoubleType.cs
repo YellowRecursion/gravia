@@ -1,6 +1,6 @@
 namespace Gravia.Domain.Values.Entities;
 
-public sealed record DoubleValueType : ValueTypeDescriptor
+public sealed record DoubleType : TypeDescriptor
 {
     public override string Kind => "double";
 }

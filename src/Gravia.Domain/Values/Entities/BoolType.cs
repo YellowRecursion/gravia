@@ -1,6 +1,6 @@
 namespace Gravia.Domain.Values.Entities;
 
-public sealed record BoolValueType : ValueTypeDescriptor
+public sealed record BoolType : TypeDescriptor
 {
     public override string Kind => "bool";
 }

@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Gravia.Domain.Localization.Entities;
 using Gravia.Domain.Settings.Entities;
+using Gravia.Domain.Traits.Interfaces;
+using Gravia.Domain.Values;
 
 namespace Gravia.Domain.Settings.Interfaces;
 
@@ -12,6 +14,8 @@ public interface ISetting
     /// <summary>Placement in the UI, independent of the setting's identity and storage.</summary>
     SettingsUiPath UiPath { get; }
     LocalizedText? Description { get; }
+    TypeDescriptor ValueType { get; }
+    IReadOnlyList<ITrait> Traits { get; }
 
     /// <summary>Restores the default value.</summary>
     void Reset();

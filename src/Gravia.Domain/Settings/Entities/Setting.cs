@@ -4,6 +4,7 @@ using Gravia.Domain.Localization.Entities;
 using Gravia.Domain.Settings.Events;
 using Gravia.Domain.Settings.Interfaces;
 using Gravia.Domain.Traits.Interfaces;
+using Gravia.Domain.Values;
 
 namespace Gravia.Domain.Settings.Entities;
 
@@ -18,6 +19,7 @@ public abstract class Setting<T> : ISetting
     public LocalizedText? Description { get; }
     public T Value { get; private set; }
     public T DefaultValue { get; }
+    public abstract TypeDescriptor ValueType { get; }
     public IReadOnlyList<ITrait> Traits => _traits;
 
     /// <summary>Initializes the metadata and uses the default as the initial value.</summary>
