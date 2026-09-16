@@ -161,6 +161,10 @@ export async function initializeI18n() {
             },
           },
           workspace: {
+            addPanel: 'Открыть панель',
+            maximizePanel: 'Развернуть на рабочую область',
+            restorePanel: 'Восстановить раскладку',
+            emptyWorkspace: 'Все панели закрыты',
             files: 'Файлы',
             graph: 'Граф',
             inspector: 'Инспектор',
@@ -331,6 +335,10 @@ export async function initializeI18n() {
             },
           },
           workspace: {
+            addPanel: 'Open panel',
+            maximizePanel: 'Maximize in workspace',
+            restorePanel: 'Restore layout',
+            emptyWorkspace: 'All panels are closed',
             files: 'Files',
             graph: 'Graph',
             inspector: 'Inspector',

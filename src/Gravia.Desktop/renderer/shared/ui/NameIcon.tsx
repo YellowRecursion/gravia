@@ -12,9 +12,11 @@ export function NameIcon({
 }) {
   const colors = getNameColors(name);
   const { palette } = colors;
-  let seed = colors.seed;
   const tiles = Array.from({ length: 4 }, (_, index) => {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    let seed = colors.seed;
+    for (let step = 0; step <= index; step++) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    }
     const shape = (seed >>> 16) % 4;
     const rotation = ((seed >>> 24) % 4) * 90;
     const fill = palette[1 + ((seed >>> 8) % 3)];

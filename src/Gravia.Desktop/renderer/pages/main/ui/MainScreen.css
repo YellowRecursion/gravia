@@ -70,3 +70,23 @@
   width: 100%;
   height: 100%;
 }
+
+.workspace-tab-title {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workspace-tab-title > .dv-default-tab {
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-header-actions {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-inline: 2px;
+}

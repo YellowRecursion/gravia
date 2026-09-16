@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/shared/ui';
 import { FilesPanel, GraphPanel, InspectorPanel, LogsPanel } from './WorkspacePanels';
 import { WorkspaceTab } from './WorkspaceTab';
+import { WorkspaceAddAction, WorkspaceEmpty, WorkspaceMaximizeAction } from './WorkspaceActions';
 import './MainScreen.css';
 
 const components = {
@@ -24,12 +25,14 @@ export function MainScreen() {
     api.addPanel({
       id: 'graph',
       component: 'graph',
+      params: { kind: 'graph' },
       title: t('workspace.graph'),
       minimumWidth: 200,
     });
     api.addPanel({
       id: 'files',
       component: 'files',
+      params: { kind: 'files' },
       title: t('workspace.files'),
       position: { referencePanel: 'graph', direction: 'left' },
       initialWidth: Math.round(api.width * 0.2),
@@ -38,6 +41,7 @@ export function MainScreen() {
     api.addPanel({
       id: 'inspector',
       component: 'inspector',
+      params: { kind: 'inspector' },
       title: t('workspace.inspector'),
       position: { referencePanel: 'graph', direction: 'right' },
       initialWidth: Math.round(api.width * 0.25),
@@ -46,6 +50,7 @@ export function MainScreen() {
     api.addPanel({
       id: 'logs',
       component: 'logs',
+      params: { kind: 'logs' },
       title: t('workspace.logs'),
       position: { referencePanel: 'inspector', direction: 'within' },
       inactive: true,
@@ -63,6 +68,9 @@ export function MainScreen() {
         <DockviewReact
           components={components}
           defaultTabComponent={WorkspaceTab}
+          leftHeaderActionsComponent={WorkspaceAddAction}
+          rightHeaderActionsComponent={WorkspaceMaximizeAction}
+          watermarkComponent={WorkspaceEmpty}
           onReady={onReady}
           theme={colorScheme === 'dark' ? themeDark : themeLight}
           disableFloatingGroups

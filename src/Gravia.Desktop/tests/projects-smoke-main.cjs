@@ -549,6 +549,47 @@ runDesktop({
     await main('Бета');
     await showProjects('Бета');
     await selectRecent('Бета');
+    // Dockview panel lifecycle: duplicates, native maximize/restore, close all and reopen.
+    const addPanel = '[aria-label="Открыть панель"]';
+    await click(addPanel);
+    await until(`!!document.querySelector('.ant-dropdown-menu-item')`);
+    await evaluate(
+      `Array.from(document.querySelectorAll('.ant-dropdown-menu-item')).find(item => item.textContent.includes('Логи')).click()`,
+    );
+    await until(`document.querySelectorAll('.dv-tab').length === 5`);
+    assert.equal(
+      await evaluate(
+        `Array.from(document.querySelectorAll('.dv-tab')).filter(tab => tab.textContent.includes('Логи')).length`,
+      ),
+      2,
+    );
+    assert.equal(
+      await evaluate(`document.querySelectorAll('.workspace-tab-title > .anticon').length`),
+      5,
+    );
+    await click('[aria-label="Развернуть на рабочую область"]');
+    await until(`!!document.querySelector('[aria-label="Восстановить раскладку"]')`);
+    assert.equal(
+      await evaluate(`(() => {
+      const group = document.querySelector('[aria-label="Восстановить раскладку"]').closest('.dv-groupview');
+      return Math.abs(group.getBoundingClientRect().width - document.querySelector('.main-screen__dock').getBoundingClientRect().width) < 4;
+    })()`),
+      true,
+    );
+    await click('[aria-label="Восстановить раскладку"]');
+    await until(`!document.querySelector('[aria-label="Восстановить раскладку"]')`);
+    await evaluate(
+      `Array.from(document.querySelectorAll('.dv-default-tab-action')).forEach(button => button.click())`,
+    );
+    await until(
+      `document.querySelectorAll('.dv-tab').length === 0 && document.body.innerText.includes('Все панели закрыты')`,
+    );
+    await click(addPanel);
+    await until(`!!document.querySelector('.ant-dropdown-menu-item')`);
+    await evaluate(
+      `Array.from(document.querySelectorAll('.ant-dropdown-menu-item')).find(item => item.textContent.includes('Логи')).click()`,
+    );
+    await until(`document.querySelectorAll('.dv-tab').length === 1`);
     const applicationAtExit = await openSettingsWindow('application');
     const projectAtExit = await openSettingsWindow('project');
     await verifySettingsWindow(applicationAtExit, 'application');
