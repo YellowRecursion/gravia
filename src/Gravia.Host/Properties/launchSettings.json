@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "Gravia": {
+      "commandName": "Project",
+      "launchBrowser": false
+    },
+    "Gravia Dev": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "Desktop__HotReload": "true"
+      }
+    }
+  }
+}

@@ -1,6 +1,24 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { parseBootstrap } = require('../bootstrap.cjs');
+const path = require('node:path');
+
+test('development bootstrap accepts only an absolute source directory', () => {
+  const sourceDirectory = path.resolve(__dirname, '..');
+  assert.deepEqual(
+    parseBootstrap(JSON.stringify({ backendUrl: 'http://127.0.0.1:12345/', sourceDirectory })),
+    {
+      backendUrl: 'http://127.0.0.1:12345/',
+      sourceDirectory,
+    },
+  );
+  for (const value of ['', '../renderer', 42, null])
+    assert.throws(() =>
+      parseBootstrap(
+        JSON.stringify({ backendUrl: 'http://127.0.0.1:12345/', sourceDirectory: value }),
+      ),
+    );
+});
 
 test('accepts the actual loopback address supplied by Host', () => {
   assert.deepEqual(parseBootstrap('{"backendUrl":"http://127.0.0.1:12345"}'), {

@@ -2,8 +2,8 @@
   position: relative;
   flex: 0 0 var(--app-title-bar-height);
   height: var(--app-title-bar-height);
-  background: #202124;
-  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  background: var(--gravia-bg-container);
+  border-bottom: 1px solid var(--gravia-border-secondary);
   user-select: none;
   app-region: drag;
   -webkit-app-region: drag;
@@ -22,9 +22,12 @@
 }
 
 .app-title-bar__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
   overflow: hidden;
-  color: rgb(255 255 255 / 86%);
+  color: var(--gravia-text);
   font-size: 13px;
   font-weight: 500;
   line-height: 1;
@@ -43,4 +46,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.app-title-bar__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  margin-inline-start: auto;
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
+}
+
+.settings-window__search {
+  width: clamp(160px, 26vw, 320px);
 }

@@ -6,6 +6,20 @@ namespace Gravia.Host.Tests;
 
 public sealed class DesktopHostTests
 {
+    [Fact]
+    public void HotReloadRequiresDevelopmentEnvironment()
+    {
+        Assert.Throws<InvalidOperationException>(() => DesktopHost.Build([
+            "--environment=Production", "--Desktop:HotReload=true"]));
+    }
+
+    [Fact]
+    public void MissingDevSourcesFailClearly()
+    {
+        var options = new DesktopOptions { SourceDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()) };
+        Assert.Throws<DirectoryNotFoundException>(() => options.ResolveSourceDirectory());
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

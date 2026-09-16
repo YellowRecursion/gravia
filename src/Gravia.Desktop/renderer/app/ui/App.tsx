@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, Flex, Spin } from 'antd';
 import { AppTitleBar } from './AppTitleBar';
+import { SettingsMenu } from './SettingsMenu';
 import { useProjectSession } from '../model/use-project-session';
 import { ProjectsScreen } from '@/pages/projects';
+import { MainScreen } from '@/pages/main';
 
 export function App() {
   const { t } = useTranslation();
@@ -12,6 +14,7 @@ export function App() {
       <AppTitleBar
         projectName={session.current.data?.name}
         onChooseProject={session.chooseProject}
+        actions={<SettingsMenu projectAvailable={!!session.current.data && !session.isPending} />}
       />
       {session.current.isPending ? (
         <Flex flex={1} align="center" justify="center">
@@ -34,7 +37,7 @@ export function App() {
           onCreateProject={session.createProject}
         />
       ) : (
-        <div style={{ flex: 1, minHeight: 0 }} aria-label={t('projects.mainScreen')} />
+        <MainScreen key={session.current.data?.path} />
       )}
     </main>
   );

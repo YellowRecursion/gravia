@@ -1,11 +1,11 @@
 const { parseBootstrap } = require('./bootstrap.cjs');
 const net = require('node:net');
-const path = require('node:path');
 const { registerDirectoryDialog } = require('./directory-dialog.cjs');
+const { registerWindowAppearance } = require('./window-appearance.cjs');
+const { createAppWindow } = require('./app-window.cjs');
+const { registerSettingsWindows } = require('./settings-windows.cjs');
 
-const TITLE_BAR_HEIGHT = 40;
-
-async function runDesktop({ app, BrowserWindow, session, Menu, ipcMain, dialog }) {
+async function runDesktop({ app, BrowserWindow, session, Menu, ipcMain, dialog, nativeTheme }) {
   app.setName('Gravia');
   // A private local pipe is independent of Windows console/stdio initialization.
   // EOF also arrives if Rider forcibly terminates the Host.
@@ -37,11 +37,22 @@ async function runDesktop({ app, BrowserWindow, session, Menu, ipcMain, dialog }
       pending = '';
     });
   });
+  let stopping = false;
   const stop = () => {
+    if (stopping) return;
+    stopping = true;
     rejectBootstrap(new Error('Host disconnected before startup completed.'));
-    app.quit();
     setTimeout(() => app.exit(0), 3000).unref();
+    app.quit();
   };
+  // Vite may report a proxy disconnect after Rider has already killed the log reader (Host).
+  // Treat its broken diagnostic pipe as shutdown, not an unhandled Electron error dialog.
+  const diagnosticPipeError = (error) => {
+    if (error.code === 'EPIPE' || error.code === 'ECONNRESET') stop();
+    else throw error;
+  };
+  process.stdout.on('error', diagnosticPipeError);
+  process.stderr.on('error', diagnosticPipeError);
   control.on('end', stop);
   control.on('error', stop);
   const startupTimeout = setTimeout(
@@ -56,44 +67,49 @@ async function runDesktop({ app, BrowserWindow, session, Menu, ipcMain, dialog }
   }
 
   await app.whenReady();
+  let rendererUrl = configuration.backendUrl;
+  if (configuration.sourceDirectory) {
+    const { startDevServer } = require('./dev-server.cjs');
+    const devServer = await startDevServer(configuration.sourceDirectory, configuration.backendUrl);
+    rendererUrl = devServer.url;
+    app.once('will-quit', (event) => {
+      event.preventDefault();
+      void devServer.close().then(
+        () => app.exit(0),
+        (error) => {
+          console.error('Could not stop Gravia Dev.', error);
+          app.exit(1);
+        },
+      );
+    });
+  }
   Menu.setApplicationMenu(null);
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) =>
     callback(false),
   );
   session.defaultSession.setPermissionCheckHandler(() => false);
-  const window = new BrowserWindow({
-    title: 'Gravia Lab',
-    width: 1200,
-    height: 800,
-    minWidth: 640,
-    minHeight: 480,
-    show: false,
-    backgroundColor: '#202124',
-    titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      // Keep the native controls, but let the renderer draw one uninterrupted title bar.
-      color: '#20212400',
-      symbolColor: '#e8eaed',
-      height: TITLE_BAR_HEIGHT,
-    },
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
-      preload: path.join(__dirname, 'preload.cjs'),
-    },
+  const window = createAppWindow(BrowserWindow);
+  registerDirectoryDialog({ ipcMain, dialog, window, backendUrl: rendererUrl });
+  const trustAppearanceWindow = registerWindowAppearance({
+    ipcMain,
+    nativeTheme,
+    window,
+    backendUrl: rendererUrl,
   });
-  registerDirectoryDialog({ ipcMain, dialog, window, backendUrl: configuration.backendUrl });
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  window.webContents.on('will-navigate', (event) => event.preventDefault());
-  window.webContents.on('will-redirect', (event) => event.preventDefault());
-  window.webContents.on('will-attach-webview', (event) => event.preventDefault());
+  registerSettingsWindows({
+    ipcMain,
+    BrowserWindow,
+    window,
+    backendUrl: rendererUrl,
+    trustAppearanceWindow,
+  });
   window.webContents.on('render-process-gone', (_event, details) => {
     console.error(`Renderer stopped: ${details.reason}`);
     app.exit(1);
   });
   app.on('window-all-closed', () => app.quit());
-  await window.loadURL(configuration.backendUrl);
+  window.once('closed', () => app.quit());
+  await window.loadURL(rendererUrl);
   window.show();
   control.write(`${JSON.stringify({ event: 'ready' })}\n`);
   return window;

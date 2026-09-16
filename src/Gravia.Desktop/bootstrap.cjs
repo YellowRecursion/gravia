@@ -1,4 +1,6 @@
 // This is a private Host-to-shell startup message, not the plugin or frontend API.
+const path = require('node:path');
+
 function parseBootstrap(line) {
   const value = JSON.parse(line);
   const url = new URL(value.backendUrl);
@@ -13,6 +15,11 @@ function parseBootstrap(line) {
     url.hash
   ) {
     throw new Error('Expected a loopback backend URL with an explicit port.');
+  }
+  if (value.sourceDirectory !== undefined) {
+    if (typeof value.sourceDirectory !== 'string' || !path.isAbsolute(value.sourceDirectory))
+      throw new Error('Expected an absolute desktop source directory.');
+    return { backendUrl: url.href, sourceDirectory: path.normalize(value.sourceDirectory) };
   }
   return { backendUrl: url.href };
 }

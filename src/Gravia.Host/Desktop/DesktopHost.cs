@@ -27,6 +27,8 @@ public static class DesktopHost
         builder.Services.Configure<InMemoryLogOptions>(builder.Configuration.GetSection(InMemoryLogOptions.SectionName));
         var desktop = new DesktopOptions();
         builder.Configuration.GetSection(DesktopOptions.SectionName).Bind(desktop);
+        if (desktop.HotReload && !builder.Environment.IsDevelopment())
+            throw new InvalidOperationException("Desktop:HotReload is only available in the Development environment.");
         desktop.AppDirectory = Path.GetFullPath(desktop.AppDirectory);
         builder.Services.AddSingleton(desktop);
         var app = builder.Build();

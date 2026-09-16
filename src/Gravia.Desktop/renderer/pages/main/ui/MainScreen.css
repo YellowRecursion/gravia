@@ -1,0 +1,72 @@
+.main-screen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.main-screen__dock {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Keep Dockview's layout metrics; every surface and interaction color comes from Ant. */
+.main-screen__dock :is(.dockview-theme-dark, .dockview-theme-light) {
+  --dv-group-view-background-color: var(--gravia-bg-container);
+  --dv-tabs-and-actions-container-background-color: var(--gravia-bg-layout);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--gravia-bg-container);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--gravia-bg-container);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--gravia-bg-layout);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--gravia-bg-layout);
+  --dv-activegroup-visiblepanel-tab-color: var(--gravia-text);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--gravia-text-secondary);
+  --dv-activegroup-hiddenpanel-tab-color: var(--gravia-text-secondary);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--gravia-text-tertiary);
+  --dv-tab-divider-color: var(--gravia-border-secondary);
+  --dv-separator-border: var(--gravia-border-secondary);
+  --dv-paneview-header-border-color: var(--gravia-border-secondary);
+  --dv-paneview-active-outline-color: var(--gravia-primary);
+  --dv-active-sash-color: var(--gravia-primary);
+  --dv-edge-dock-indicator-color: var(--gravia-primary);
+  --dv-drag-over-background-color: var(--gravia-primary-bg);
+  --dv-drag-over-border-color: var(--gravia-primary-border);
+  --dv-icon-hover-background-color: var(--gravia-fill-tertiary);
+  --dv-tabs-container-scrollbar-color: var(--gravia-fill);
+  --dv-scrollbar-background-color: var(--gravia-fill-secondary);
+  --dv-floating-box-shadow: var(--gravia-shadow);
+  --dv-floating-border: 1px solid var(--gravia-border);
+  --dv-context-menu-background-color: var(--gravia-bg-elevated);
+  --dv-context-menu-color: var(--gravia-text);
+  --dv-dnd-compass-color: var(--gravia-bg-elevated);
+  --dv-dnd-compass-cell-color: var(--gravia-fill-tertiary);
+  --dv-dnd-compass-active-cell-color: var(--gravia-primary);
+  --dv-dnd-compass-edge-cell-color: var(--gravia-primary-bg);
+  --dv-tabs-and-actions-container-font-size: var(--gravia-font-size-small);
+  --dv-tab-font-size: var(--gravia-font-size-small);
+}
+
+.main-screen__status {
+  display: flex;
+  flex: 0 0 28px;
+  align-items: center;
+  overflow: hidden;
+  padding-inline: 12px;
+  border-top: 1px solid;
+}
+
+.workspace-panel {
+  height: 100%;
+  overflow: auto;
+  padding: 16px;
+}
+
+.workspace-panel--empty {
+  text-align: center;
+}
+
+.workspace-graph {
+  width: 100%;
+  height: 100%;
+}

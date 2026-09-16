@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from '../ui/App';
+import { SettingsWindow } from '../ui/SettingsWindow';
+import { getSettingsWindowScope } from '../config/window-route';
 import { AppErrorBoundary } from '../ui/AppErrorBoundary';
 import { AppProviders } from '../providers/AppProviders';
 import { fusionPeer } from '@/shared/api';
@@ -15,12 +17,13 @@ async function bootstrap() {
   await initializeI18n();
   const root = document.getElementById('root');
   if (!root) throw new Error('Renderer root element is missing.');
+  const settingsScope = getSettingsWindowScope(window.location.search);
 
   createRoot(root).render(
     <StrictMode>
       <AppProviders>
         <AppErrorBoundary>
-          <App />
+          {settingsScope ? <SettingsWindow scope={settingsScope} /> : <App />}
         </AppErrorBoundary>
       </AppProviders>
     </StrictMode>,

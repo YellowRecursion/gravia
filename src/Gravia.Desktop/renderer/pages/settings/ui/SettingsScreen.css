@@ -1,0 +1,111 @@
+.settings-screen,
+.settings-screen__state {
+  height: 100%;
+  min-height: 0;
+}
+
+.settings-screen__categories {
+  padding: 16px 12px;
+}
+
+.settings-screen__fields {
+  padding: 24px;
+  height: 100%;
+  overflow: auto;
+}
+
+.settings-mock__short {
+  width: 100%;
+}
+
+.settings-mock__collection {
+  margin: 0;
+}
+
+.settings-field-block__content {
+  padding: 8px 0;
+}
+
+.settings-field-block--muted {
+  opacity: 0.4;
+}
+
+.settings-field-block--muted:focus-within,
+.settings-field-block--muted:hover {
+  opacity: 1;
+}
+
+.settings-field-match {
+  background: #ffe58f;
+  color: #141414;
+  padding-inline: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.settings-field-block--multiline > .settings-field-block__content {
+  padding-block: 32px;
+}
+
+.settings-field-header {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+}
+
+.settings-field-header__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  line-height: 1.5;
+}
+
+.settings-field-header__actions {
+  flex-shrink: 0;
+}
+
+.settings-field-header__help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--gravia-text-tertiary);
+  cursor: help;
+}
+
+.settings-field-item > .ant-form-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  column-gap: 8px;
+  align-items: start;
+}
+
+.settings-field-block .ant-form-item-row > .ant-form-item-label,
+.settings-field-block .ant-form-item-row > .ant-form-item-control {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  padding: 0;
+}
+
+.settings-field-block .ant-form-item-label > label {
+  width: 100%;
+  height: auto;
+  min-height: 32px;
+  white-space: normal;
+}
+
+.settings-field-block .ant-form-item-label > label::after {
+  display: none;
+}
+
+.settings-field-item .ant-form-item-control-input-content > .ant-input-number {
+  width: 100%;
+}
+
+.settings-mock__cell {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}

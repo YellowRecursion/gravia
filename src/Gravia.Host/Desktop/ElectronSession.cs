@@ -50,8 +50,8 @@ public sealed class ElectronSession : IAsyncDisposable
         catch { control.Dispose(); throw; }
         var session = new ElectronSession(process, control, logger);
         using var startup = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        startup.CancelAfter(TimeSpan.FromSeconds(20));
-        var handshake = session.HandshakeAsync(backendUrl, startup.Token);
+        startup.CancelAfter(TimeSpan.FromSeconds(options.HotReload ? 90 : 20));
+        var handshake = session.HandshakeAsync(backendUrl, options, startup.Token);
         try
         {
             if (await Task.WhenAny(handshake, session.Completion) != handshake)
@@ -69,12 +69,14 @@ public sealed class ElectronSession : IAsyncDisposable
         }
     }
 
-    private async Task HandshakeAsync(Uri backendUrl, CancellationToken cancellationToken)
+    private async Task HandshakeAsync(Uri backendUrl, DesktopOptions options, CancellationToken cancellationToken)
     {
         await _control.WaitForConnectionAsync(cancellationToken);
         using var writer = new StreamWriter(_control, new UTF8Encoding(false), leaveOpen: true);
         using var reader = new StreamReader(_control, Encoding.UTF8, leaveOpen: true);
-        await writer.WriteLineAsync(JsonSerializer.Serialize(new { backendUrl = backendUrl.AbsoluteUri }).AsMemory(), cancellationToken);
+        var bootstrap = new Dictionary<string, string> { ["backendUrl"] = backendUrl.AbsoluteUri };
+        if (options.HotReload) bootstrap["sourceDirectory"] = options.ResolveSourceDirectory();
+        await writer.WriteLineAsync(JsonSerializer.Serialize(bootstrap).AsMemory(), cancellationToken);
         await writer.FlushAsync(cancellationToken);
         if (await reader.ReadLineAsync(cancellationToken) != "{\"event\":\"ready\"}")
             throw new InvalidOperationException("Electron sent an invalid readiness message.");

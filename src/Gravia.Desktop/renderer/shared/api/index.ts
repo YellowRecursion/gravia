@@ -1,8 +1,15 @@
 export { applicationSettingsApi } from './application-settings';
+export { observeSettingsQuery } from './settings-sync';
 export { projectSettingsApi } from './project-settings';
 export { projectsApi } from './projects';
 export { currentProjectQuery, recentProjectsQuery } from './project-queries';
-export { chooseDirectory, DesktopUnavailableError } from './desktop';
+export {
+  chooseDirectory,
+  DesktopUnavailableError,
+  setWindowAppearance,
+  openSettings,
+} from './desktop';
+export type { SettingsScope } from './desktop';
 export type { ApplicationSettingsApi } from './application-settings';
 export type { ProjectSettingsApi } from './project-settings';
 export type {

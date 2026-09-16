@@ -32,7 +32,7 @@ public sealed class ProjectsDesktopTests
             var shell = Path.Combine(directory, "desktop");
             Directory.CreateDirectory(shell);
             Directory.CreateDirectory(Path.Combine(directory, "projects"));
-            foreach (var file in new[] { "shell.cjs", "bootstrap.cjs", "preload.cjs", "directory-dialog.cjs", "package.json" })
+            foreach (var file in new[] { "shell.cjs", "bootstrap.cjs", "preload.cjs", "directory-dialog.cjs", "window-appearance.cjs", "app-window.cjs", "settings-windows.cjs", "package.json" })
                 File.Copy(Path.Combine(desktop, file), Path.Combine(shell, file));
             File.Copy(Path.Combine(desktop, "tests", "projects-smoke-main.cjs"), Path.Combine(shell, "main.cjs"));
 
