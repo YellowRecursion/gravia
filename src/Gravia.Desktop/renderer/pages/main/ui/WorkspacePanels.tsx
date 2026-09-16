@@ -44,12 +44,3 @@ export function InspectorPanel() {
     </Flex>
   );
 }
-
-export function LogsPanel() {
-  const { t } = useTranslation();
-  return (
-    <div className="workspace-panel" aria-label={t('workspace.logs')}>
-      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('workspace.noLogs')} />
-    </div>
-  );
-}

@@ -3,7 +3,10 @@ import { DockviewReact, themeDark, themeLight } from 'dockview-react';
 import type { DockviewReadyEvent } from 'dockview-react';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/shared/ui';
-import { FilesPanel, GraphPanel, InspectorPanel, LogsPanel } from './WorkspacePanels';
+import { FilesPanel, GraphPanel, InspectorPanel } from './WorkspacePanels';
+import { LogsPanel } from './LogsPanel';
+import { LogStatusBar } from './LogStatusBar';
+import { createLogsPreview } from './logs-preview';
 import { WorkspaceTab } from './WorkspaceTab';
 import { WorkspaceAddAction, WorkspaceEmpty, WorkspaceMaximizeAction } from './WorkspaceActions';
 import './MainScreen.css';
@@ -19,6 +22,8 @@ export function MainScreen() {
   const { t } = useTranslation();
   const { token } = theme.useToken();
   const colorScheme = useColorScheme();
+  // Preview only; the status bar does not read selection or lifecycle state from dock panels.
+  const latestLog = createLogsPreview(t).at(-1);
 
   function onReady({ api }: DockviewReadyEvent) {
     // Layout is owned by this mounted screen; no persistence or project document state yet.
@@ -77,11 +82,7 @@ export function MainScreen() {
           getTabContextMenuItems={() => []}
         />
       </div>
-      <footer
-        className="main-screen__status"
-        aria-label={t('workspace.lastLog')}
-        style={{ background: token.colorBgLayout, borderColor: token.colorBorderSecondary }}
-      />
+      <LogStatusBar entry={latestLog} />
     </section>
   );
 }

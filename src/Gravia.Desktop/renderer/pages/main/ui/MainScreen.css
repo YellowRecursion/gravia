@@ -49,11 +49,25 @@
 
 .main-screen__status {
   display: flex;
-  flex: 0 0 28px;
+  flex: 0 0 24px;
   align-items: center;
   overflow: hidden;
-  padding-inline: 12px;
+  gap: 6px;
+  min-width: 0;
+  padding-inline: 8px;
+  font-size: calc(var(--gravia-font-size-small) + 1px);
   border-top: 1px solid;
+}
+
+.main-screen__status > .anticon {
+  flex-shrink: 0;
+}
+
+.main-screen__status-message {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace-panel {
