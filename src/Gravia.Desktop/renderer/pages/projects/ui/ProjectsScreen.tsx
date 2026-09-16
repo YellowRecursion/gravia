@@ -18,6 +18,7 @@ import {
   theme,
 } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { NameIcon } from '@/shared/ui';
 import {
   chooseDirectory,
   DesktopUnavailableError,
@@ -155,7 +156,7 @@ export function ProjectsScreen({
                   items={(recent.data ?? []).map((project) => ({
                     key: project.path,
                     disabled: busy,
-                    icon: <FolderOutlined />,
+                    icon: <NameIcon name={project.name} size={32} />,
                     label: (
                       <Flex vertical gap={2} style={{ minWidth: 0, lineHeight: token.lineHeight }}>
                         <Typography.Text strong ellipsis>
@@ -199,6 +200,7 @@ export function ProjectsScreen({
                 >
                   <Input
                     id="project-name"
+                    prefix={name.trim() ? <NameIcon name={name} size={20} /> : <FolderOutlined />}
                     placeholder={t('projects.namePlaceholder')}
                     autoComplete="off"
                     value={name}

@@ -21,6 +21,23 @@
   gap: 16px;
 }
 
+.app-title-bar[data-project='true']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 420px 100px at 180px 0,
+    hsl(var(--project-hue) 75% 58% / 0.24) 0%,
+    hsl(var(--project-hue) 70% 50% / 0.1) 45%,
+    transparent 100%
+  );
+}
+
+.app-title-bar[data-project='true'] .app-title-bar__safe-area {
+  z-index: 1;
+}
+
 .app-title-bar__title {
   display: inline-flex;
   align-items: center;

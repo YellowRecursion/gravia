@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Button, Tooltip } from 'antd';
+import { NameIcon } from '@/shared/ui';
+import { getNameColors } from '@/shared/lib';
 import './AppTitleBar.css';
 
 interface AppTitleBarProps {
@@ -20,7 +22,15 @@ export function AppTitleBar({
 }: AppTitleBarProps) {
   const { t } = useTranslation();
   return (
-    <header className="app-title-bar">
+    <header
+      className="app-title-bar"
+      data-project={projectName ? 'true' : undefined}
+      style={
+        projectName
+          ? ({ '--project-hue': getNameColors(projectName).hue } as CSSProperties)
+          : undefined
+      }
+    >
       <div className="app-title-bar__safe-area">
         <span className="app-title-bar__title">
           {icon && <span aria-hidden="true">{icon}</span>}
@@ -32,6 +42,7 @@ export function AppTitleBar({
               type="text"
               size="small"
               className="app-title-bar__project"
+              icon={<NameIcon name={projectName} size={20} />}
               aria-label={t('projects.switchToProjects', { name: projectName })}
               onClick={onChooseProject}
             >
