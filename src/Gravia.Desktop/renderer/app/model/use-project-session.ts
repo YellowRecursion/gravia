@@ -34,6 +34,10 @@ export function useProjectSession() {
 
   async function perform(request: ProjectOperation) {
     if (running.current) return;
+    if (request.kind === 'open' && request.path === current.data?.path) {
+      setChoosingProject(false);
+      return;
+    }
     running.current = true;
     try {
       await operation.mutateAsync(request);
@@ -46,7 +50,9 @@ export function useProjectSession() {
     current,
     showProjects: choosingProject || current.data === null,
     isPending: operation.isPending,
-    chooseProject: () => setChoosingProject(true),
+    chooseProject: () => {
+      if (!running.current) setChoosingProject((choosing) => !choosing);
+    },
     openProject: (path: string) => perform({ kind: 'open', path }),
     createProject: (parentDirectory: string, name: string) =>
       perform({ kind: 'create', parentDirectory, name }),
