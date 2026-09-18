@@ -60,7 +60,10 @@ export function VirtualLogList({
     // The panel's projection can arrive after the navigation request.
     if (rows[index]?.id !== reveal.sequence) return;
     const element = viewport.current!;
-    element.scrollTop = Math.max(0, index * logRowHeight - (element.clientHeight - logRowHeight) / 2);
+    element.scrollTop = Math.max(
+      0,
+      index * logRowHeight - (element.clientHeight - logRowHeight) / 2,
+    );
     element.focus({ preventScroll: true });
     revealedRequest.current = reveal.requestId;
   }, [rows, reveal, bounds.height]);
