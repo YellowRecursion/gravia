@@ -14,7 +14,7 @@ public sealed class PluginManifest
     private PluginExecution _execution = null!;
 
     /// <summary>
-    /// Уникальное имя пакета в формате Reverse Domain Name.
+    /// A unique package name in the Reverse Domain Name format.
     /// </summary>
     /// <example>com.organization.product</example>
     public required string Id
@@ -29,7 +29,7 @@ public sealed class PluginManifest
     }
     
     /// <summary>
-    /// Версия плагина в формате SemVer.
+    /// The plugin version is in the SemVer format.
     /// </summary>
     /// <example>1.2.3</example>
     public required string Version
