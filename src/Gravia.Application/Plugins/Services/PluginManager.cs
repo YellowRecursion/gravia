@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Gravia.Application.Plugins.DTOs;
 using Gravia.Application.Plugins.Interfaces;
 using Gravia.Application.Storage;
 using Gravia.Domain.Plugins.Entities;
@@ -21,15 +20,15 @@ public sealed class PluginManager : IAsyncDisposable
     private readonly ILogger<PluginManager> _logger;
     private readonly IPluginFactory[] _factories;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly List<Entry> _entries = [];
-    private readonly List<Entry> _activationOrder = [];
-    private readonly object _disposeLock = new();
-    private IReadOnlyList<PluginInfo> _plugins = Array.Empty<PluginInfo>();
+    private readonly List<PluginController> _controllers = [];
+    private readonly List<PluginController> _activationOrder = [];
+    private readonly Lock _disposeLock = new();
     private Task? _disposal;
     private bool _initialized;
     private bool _disposed;
 
-    public IReadOnlyList<PluginInfo> Plugins => Volatile.Read(ref _plugins);
+    /// <summary>Controllers for the project's plugins. Presentation is built by query handlers.</summary>
+    public IReadOnlyList<PluginController> Controllers => _controllers;
 
     public PluginManager(string projectPath, IDataStore dataStore, ILogger<PluginManager> logger,
         IEnumerable<IPluginFactory>? factories = null)
@@ -43,191 +42,177 @@ public sealed class PluginManager : IAsyncDisposable
         _factories = factories?.ToArray() ?? [];
     }
 
-    /// <summary>Restores connections and activates enabled plugins. Individual plugin failures remain visible in Plugins.</summary>
+    /// <summary>Restores connections and activates plugins. Individual failures are logged.</summary>
     public Task InitializeAsync(CancellationToken cancellationToken = default) => RunAsync(async () =>
     {
-        if (_initialized) { await ActivateEnabledAsync(cancellationToken); return; }
+        if (_initialized) { await ActivateAllAsync(cancellationToken); return; }
         var registrations = await _dataStore.ReadAsync<PluginRegistration[]>(FileName, cancellationToken) ?? [];
-        var pending = new List<Entry>();
+        var pending = new List<PluginController>();
         foreach (var registration in registrations)
         {
             if (registration is null) throw new JsonException("A plugin registration must not be null.");
             var path = NormalizePath(registration.Path);
             if (pending.Any(entry => PathComparer.Equals(entry.Path, path)))
                 throw new JsonException($"Duplicate plugin path '{path}'.");
-            pending.Add(new Entry(path, registration.Enabled));
+            pending.Add(CreateController(path));
         }
         // All manifests must be known before activation: dependencies can appear later in the file.
         foreach (var entry in pending)
-        {
-            try { entry.Manifest = await ReadManifestAsync(entry.Path, cancellationToken); }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-            catch (Exception error) { Fail(entry, error); }
-        }
-        _entries.AddRange(pending);
+            await entry.TryLoadManifestAsync(cancellationToken);
+        _controllers.AddRange(pending);
         _initialized = true;
-        await ActivateEnabledAsync(cancellationToken);
+        await ActivateAllAsync(cancellationToken);
     }, cancellationToken, requireInitialized: false);
 
-    /// <summary>Adds a validated folder as a disabled connection. Does not start it.</summary>
+    /// <summary>Saves a validated connection and attempts activation in dependency order.</summary>
     public Task AddAsync(string path, CancellationToken cancellationToken = default) => RunAsync(async () =>
     {
         path = NormalizePath(path);
-        if (_entries.Any(entry => PathComparer.Equals(entry.Path, path)))
+        if (_controllers.Any(entry => PathComparer.Equals(entry.Path, path)))
             throw new InvalidOperationException($"Plugin folder '{path}' is already connected.");
-        var manifest = await ReadManifestAsync(path, cancellationToken);
-        EnsureUniqueId(manifest.Id);
-        var entry = new Entry(path, false) { Manifest = manifest };
-        await SaveAsync(_entries.Append(entry), cancellationToken);
-        _entries.Add(entry);
-    }, cancellationToken);
-
-    /// <summary>Saves the desired enabled state. Activation failures are reported through Plugins.</summary>
-    public Task SetEnabledAsync(string path, bool enabled, CancellationToken cancellationToken = default) => RunAsync(async () =>
-    {
-        var entry = Find(path);
-        if (!enabled) EnsureNoEnabledDependents(entry);
-        var registrations = _entries.Select(item => new PluginRegistration(item.Path, item == entry ? enabled : item.Enabled)).ToArray();
-        await _dataStore.SaveAsync(FileName, registrations, cancellationToken);
-        entry.Enabled = enabled;
-        if (enabled) await ActivateEnabledAsync(cancellationToken);
-        else await StopAsync(entry, cancellationToken);
+        var entry = CreateController(path);
+        await entry.LoadManifestAsync(cancellationToken);
+        EnsureUniqueId(entry.Manifest!.Id);
+        await SaveAsync(_controllers.Append(entry), cancellationToken);
+        _controllers.Add(entry);
+        await ActivateAllAsync(cancellationToken);
     }, cancellationToken);
 
     public Task RemoveAsync(string path, CancellationToken cancellationToken = default) => RunAsync(async () =>
     {
         var entry = Find(path);
-        EnsureNoEnabledDependents(entry);
+        EnsureNoDependents(entry);
+        var wasLoaded = entry.IsLoaded;
         await StopAsync(entry, cancellationToken);
-        await SaveAsync(_entries.Where(item => item != entry), cancellationToken);
-        _entries.Remove(entry);
+        try { await SaveAsync(_controllers.Where(item => item != entry), cancellationToken); }
+        catch (Exception saveError)
+        {
+            if (wasLoaded)
+            {
+                _activationOrder.Add(entry);
+                if (!await entry.TryActivateAsync(CancellationToken.None))
+                    throw new AggregateException("Plugin removal failed and its activation could not be restored.",
+                        saveError, new InvalidOperationException($"Failed to restore plugin '{entry.Path}'. See the log for details."));
+            }
+            throw;
+        }
+        _controllers.Remove(entry);
     }, cancellationToken);
 
-    /// <summary>Reloads a manifest and restarts this plugin and its enabled dependents.</summary>
+    /// <summary>Reloads a manifest and restarts this plugin and its dependents.</summary>
     public Task ReloadAsync(string path, CancellationToken cancellationToken = default) => RunAsync(async () =>
     {
         var target = Find(path);
-        var affected = new HashSet<Entry> { target };
+        var manifest = await target.ReadManifestAsync(cancellationToken);
+        EnsureUniqueId(manifest.Id, target);
+        var affected = new HashSet<PluginController> { target };
         while (true)
         {
-            var added = _entries.Where(entry => entry.Enabled && !affected.Contains(entry) &&
+            var added = _controllers.Where(entry => !affected.Contains(entry) &&
                 affected.Any(dependency => DependsOn(entry, dependency))).ToArray();
             if (added.Length == 0) break;
             affected.UnionWith(added);
         }
-        foreach (var entry in StopOrder().Where(affected.Contains).ToArray())
+        ValidateReload(target, manifest, affected);
+        cancellationToken.ThrowIfCancellationRequested();
+        foreach (var entry in _activationOrder.AsEnumerable().Reverse().Where(affected.Contains).ToArray())
             await StopAsync(entry, cancellationToken);
-        target.Manifest = null;
-        target.Error = null;
-        try
-        {
-            var manifest = await ReadManifestAsync(target.Path, cancellationToken);
-            EnsureUniqueId(manifest.Id, target);
-            target.Manifest = manifest;
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-        catch (Exception error) { Fail(target, error); }
-        await ActivateEnabledAsync(cancellationToken);
+        target.Manifest = manifest;
+        await ActivateAllAsync(cancellationToken);
     }, cancellationToken);
 
-    private async Task ActivateEnabledAsync(CancellationToken token)
+    private void ValidateReload(PluginController target, PluginManifest replacement, IEnumerable<PluginController> affected)
     {
-        var attempted = new HashSet<Entry>();
-        foreach (var entry in _entries.Where(entry => entry.Enabled))
+        var visiting = new HashSet<PluginController>();
+        var visited = new HashSet<PluginController>();
+        foreach (var entry in affected) Visit(entry);
+
+        PluginManifest ManifestOf(PluginController entry) => entry == target ? replacement :
+            entry.Manifest ?? throw new InvalidOperationException($"Manifest unavailable for '{entry.Path}'.");
+
+        void Visit(PluginController entry)
         {
-            try { await ActivateAsync(entry, new HashSet<Entry>(), attempted, token); }
-            catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-            catch (Exception error) { Fail(entry, error); }
+            if (visited.Contains(entry)) return;
+            if (!visiting.Add(entry)) throw new InvalidOperationException($"Cyclic plugin dependency at '{entry.Path}'.");
+            var manifest = ManifestOf(entry);
+            foreach (var (id, range) in manifest.Dependencies)
+            {
+                var dependency = _controllers.SingleOrDefault(item => (item == target ? replacement : item.Manifest)?.Id == id)
+                    ?? throw new InvalidOperationException($"Plugin '{manifest.Id}' requires missing plugin '{id}'.");
+                var version = ManifestOf(dependency).Version;
+                if (!SemVersionRange.ParseNpm(range).Contains(SemVersion.Parse(version, SemVersionStyles.Strict)))
+                    throw new InvalidOperationException($"Plugin '{id}' version {version} does not satisfy '{range}'.");
+                Visit(dependency);
+            }
+            visiting.Remove(entry);
+            visited.Add(entry);
         }
     }
 
-    private async Task ActivateAsync(Entry entry, HashSet<Entry> visiting, HashSet<Entry> attempted, CancellationToken token)
+    private async Task ActivateAllAsync(CancellationToken token)
+    {
+        var attempted = new HashSet<PluginController>();
+        foreach (var entry in _controllers)
+        {
+            try { await ActivateAsync(entry, new HashSet<PluginController>(), attempted, token); }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+            catch (Exception error) { _logger.LogWarning(error, "Cannot resolve dependencies for plugin {Path}.", entry.Path); }
+        }
+    }
+
+    private async Task<bool> ActivateAsync(PluginController entry, HashSet<PluginController> visiting, HashSet<PluginController> attempted, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
-        if (entry.Active) return;
+        if (entry.IsLoaded) return true;
         if (!visiting.Add(entry)) throw new InvalidOperationException($"Cyclic plugin dependency at '{entry.Path}'.");
         try
         {
-            if (!attempted.Add(entry)) throw new InvalidOperationException(entry.Error ?? $"Plugin '{entry.Path}' could not be activated.");
-            var manifest = entry.Manifest ?? throw new InvalidOperationException(entry.Error ?? $"Manifest unavailable for '{entry.Path}'.");
+            if (!attempted.Add(entry) || entry.Manifest is not { } manifest) return false;
             EnsureUniqueId(manifest.Id, entry);
             foreach (var (id, range) in manifest.Dependencies)
             {
-                var dependency = _entries.SingleOrDefault(item => item.Manifest?.Id == id)
+                var dependency = _controllers.SingleOrDefault(item => item.Manifest?.Id == id)
                     ?? throw new InvalidOperationException($"Plugin '{manifest.Id}' requires missing plugin '{id}'.");
-                if (!dependency.Enabled)
-                    throw new InvalidOperationException($"Plugin '{manifest.Id}' requires enabled plugin '{id}'.");
                 if (!SemVersionRange.ParseNpm(range).Contains(SemVersion.Parse(dependency.Manifest!.Version, SemVersionStyles.Strict)))
                     throw new InvalidOperationException($"Plugin '{id}' version {dependency.Manifest.Version} does not satisfy '{range}'.");
-                await ActivateAsync(dependency, visiting, attempted, token);
+                if (!await ActivateAsync(dependency, visiting, attempted, token)) return false;
             }
-            if (entry.Instance is not null) await StopAsync(entry, token);
-            var factories = _factories.Where(factory => factory.Supports(manifest.Execution)).ToArray();
-            if (factories.Length != 1)
-                throw new NotSupportedException($"Expected one factory for '{manifest.Execution.GetType().Name}', found {factories.Length}.");
-            entry.Instance = await factories[0].CreateAsync(Path.GetFullPath(entry.Path, _projectPath), manifest, token)
-                ?? throw new InvalidOperationException("The plugin factory returned null.");
+            // Track attempts too: a failed activation may still own resources after failed cleanup.
+            _activationOrder.Remove(entry);
             _activationOrder.Add(entry);
-            try { await entry.Instance.ActivateAsync(token); }
-            catch
-            {
-                try { await StopAsync(entry, CancellationToken.None); }
-                catch (Exception cleanup) { _logger.LogError(cleanup, "Failed to clean up plugin {Path} after activation failure.", entry.Path); }
-                throw;
-            }
-            entry.Active = true;
-            entry.Error = null;
+            return await entry.TryActivateAsync(token);
         }
-        catch (Exception error)
-        {
-            if (error is not OperationCanceledException || !token.IsCancellationRequested) Fail(entry, error);
-            throw;
-        }
-        finally { visiting.Remove(entry); Publish(); }
+        finally { visiting.Remove(entry); }
     }
 
-    private async Task StopAsync(Entry entry, CancellationToken token)
+    private async Task StopAsync(PluginController entry, CancellationToken token)
     {
-        if (entry.Instance is null) return;
-        try { await entry.Instance.DeactivateAsync(token); }
-        catch (Exception error) { Fail(entry, error); throw; }
-        entry.Instance = null;
-        entry.Active = false;
-        entry.Error = null;
+        await entry.DeactivateAsync(token);
         _activationOrder.Remove(entry);
     }
 
-    private IEnumerable<Entry> StopOrder() => _activationOrder.AsEnumerable().Reverse()
-        .Concat(_entries.Where(entry => entry.Instance is not null)).Distinct();
-
-    private void EnsureNoEnabledDependents(Entry target)
+    private void EnsureNoDependents(PluginController target)
     {
-        var dependent = _entries.FirstOrDefault(entry => entry != target &&
-            (entry.Enabled || entry.Instance is not null) && DependsOn(entry, target));
-        if (dependent is not null) throw new InvalidOperationException($"Disable dependent plugin '{dependent.Path}' first.");
+        var dependent = _controllers.FirstOrDefault(entry => entry != target && DependsOn(entry, target));
+        if (dependent is not null) throw new InvalidOperationException($"Remove dependent plugin '{dependent.Path}' first.");
     }
 
-    private static bool DependsOn(Entry entry, Entry target) => target.Manifest is not null &&
+    private static bool DependsOn(PluginController entry, PluginController target) => target.Manifest is not null &&
         entry.Manifest?.Dependencies.ContainsKey(target.Manifest.Id) == true;
 
-    private void EnsureUniqueId(string id, Entry? except = null)
+    private void EnsureUniqueId(string id, PluginController? except = null)
     {
-        if (_entries.Any(entry => entry != except && entry.Manifest?.Id == id))
+        if (_controllers.Any(entry => entry != except && entry.Manifest?.Id == id))
             throw new InvalidOperationException($"Plugin ID '{id}' is already connected from another folder.");
     }
 
-    private async Task<PluginManifest> ReadManifestAsync(string path, CancellationToken token)
-    {
-        var data = await _dataStore.ReadBytesAsync($"{path}/{PluginManifest.FileName}", token)
-            ?? throw new FileNotFoundException($"Plugin manifest not found in '{path}'.");
-        return JsonSerializer.Deserialize<PluginManifest>(data, JsonSerializerOptions.Web)
-            ?? throw new JsonException("A plugin manifest must not be null.");
-    }
+    private PluginController CreateController(string path) =>
+        new(path, _projectPath, _dataStore, _factories, _logger);
 
-    private Task SaveAsync(IEnumerable<Entry> entries, CancellationToken token) => _dataStore.SaveAsync(FileName,
-        entries.Select(entry => new PluginRegistration(entry.Path, entry.Enabled)).ToArray(), token);
+    private Task SaveAsync(IEnumerable<PluginController> entries, CancellationToken token) => _dataStore.SaveAsync(FileName,
+        entries.Select(entry => new PluginRegistration(entry.Path)).ToArray(), token);
 
-    private Entry Find(string path) => _entries.FirstOrDefault(entry => PathComparer.Equals(entry.Path, NormalizePath(path)))
+    private PluginController Find(string path) => _controllers.FirstOrDefault(entry => PathComparer.Equals(entry.Path, NormalizePath(path)))
         ?? throw new KeyNotFoundException($"Plugin folder '{path}' is not connected.");
 
     private static string NormalizePath(string path)
@@ -239,15 +224,6 @@ public sealed class PluginManager : IAsyncDisposable
         return path;
     }
 
-    private void Fail(Entry entry, Exception error)
-    {
-        entry.Error = error.Message;
-        _logger.LogWarning(error, "Plugin {Path} is unavailable.", entry.Path);
-    }
-
-    private void Publish() => Volatile.Write(ref _plugins, Array.AsReadOnly(_entries.Select(entry =>
-        new PluginInfo(entry.Path, entry.Enabled, entry.Manifest, entry.Active, entry.Error)).ToArray()));
-
     private async Task RunAsync(Func<Task> action, CancellationToken token, bool requireInitialized = true)
     {
         await _gate.WaitAsync(token);
@@ -257,12 +233,17 @@ public sealed class PluginManager : IAsyncDisposable
             if (requireInitialized && !_initialized) throw new InvalidOperationException("Initialize the plugin manager first.");
             await action();
         }
-        finally { Publish(); _gate.Release(); }
+        finally { _gate.Release(); }
     }
 
     public ValueTask DisposeAsync()
     {
-        lock (_disposeLock) return new ValueTask(_disposal ??= DisposeCoreAsync());
+        lock (_disposeLock)
+        {
+            if (_disposal is null || _disposal.IsFaulted || _disposal.IsCanceled)
+                _disposal = DisposeCoreAsync();
+            return new ValueTask(_disposal);
+        }
     }
 
     private async Task DisposeCoreAsync()
@@ -272,23 +253,13 @@ public sealed class PluginManager : IAsyncDisposable
         {
             _disposed = true;
             List<Exception> errors = [];
-            foreach (var entry in StopOrder().ToArray())
+            foreach (var entry in _activationOrder.AsEnumerable().Reverse().ToArray())
             {
                 try { await StopAsync(entry, CancellationToken.None); }
                 catch (Exception error) { errors.Add(error); }
             }
             if (errors.Count != 0) throw new AggregateException("Failed to deactivate plugins.", errors);
         }
-        finally { Publish(); _gate.Release(); }
-    }
-
-    private sealed class Entry(string path, bool enabled)
-    {
-        public string Path { get; } = path;
-        public bool Enabled { get; set; } = enabled;
-        public PluginManifest? Manifest { get; set; }
-        public Plugin? Instance { get; set; }
-        public bool Active { get; set; }
-        public string? Error { get; set; }
+        finally { _gate.Release(); }
     }
 }

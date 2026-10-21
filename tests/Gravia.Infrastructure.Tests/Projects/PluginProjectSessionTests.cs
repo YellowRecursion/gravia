@@ -17,14 +17,14 @@ public sealed class PluginProjectSessionTests : IDisposable
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
     [Fact]
-    public async Task OpenActivatesEnabledPluginAndCloseDeactivatesBeforeStoreIsReleased()
+    public async Task OpenActivatesPluginAndCloseDeactivatesBeforeStoreIsReleased()
     {
         await WritePluginProject();
         ProjectSession? session = null;
         var factory = new Factory(async () => await session!.DataStore.SaveBytesAsync("stopped.bin", [1]));
         var sessionFactory = new ProjectSessionFactory(NullLoggerFactory.Instance, [factory]);
         session = await sessionFactory.OpenAsync(_directory);
-        Assert.True(Assert.Single(session.PluginManager.Plugins).IsActive);
+        Assert.True(Assert.Single(session.PluginManager.Controllers).Plugin?.IsLoaded == true);
         Assert.Equal(Path.Combine(_directory, "plugins", "example"), factory.Directory);
         await session.DisposeAsync();
         await session.DisposeAsync();
@@ -33,18 +33,16 @@ public sealed class PluginProjectSessionTests : IDisposable
 
         await using var reopened = await sessionFactory.OpenAsync(_directory);
         session = reopened;
-        Assert.True(Assert.Single(reopened.PluginManager.Plugins).IsActive);
+        Assert.True(Assert.Single(reopened.PluginManager.Controllers).Plugin?.IsLoaded == true);
     }
 
     [Fact]
-    public async Task UnimplementedRuntimeIsVisibleAsErrorButProjectCanOpen()
+    public async Task UnimplementedRuntimeDoesNotPreventProjectOpening()
     {
         await WritePluginProject();
         await using var session = await new ProjectSessionFactory(NullLoggerFactory.Instance).OpenAsync(_directory);
-        var plugin = Assert.Single(session.PluginManager.Plugins);
-        Assert.True(plugin.Enabled);
-        Assert.False(plugin.IsActive);
-        Assert.NotNull(plugin.Error);
+        var plugin = Assert.Single(session.PluginManager.Controllers);
+        Assert.False(plugin.Plugin?.IsLoaded == true);
     }
 
     private async Task WritePluginProject()
@@ -58,7 +56,7 @@ public sealed class PluginProjectSessionTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(directory, PluginManifest.FileName),
             JsonSerializer.Serialize(manifest, JsonSerializerOptions.Web));
         await File.WriteAllTextAsync(Path.Combine(_directory, PluginManager.FileName),
-            """[{"path":"plugins/example","enabled":true}]""");
+            """[{"path":"plugins/example"}]""");
     }
 
     private sealed class Factory(Func<Task> onStop) : IPluginFactory
@@ -74,8 +72,8 @@ public sealed class PluginProjectSessionTests : IDisposable
 
         private sealed class Instance(PluginManifest manifest, Factory owner, Func<Task> onStop) : Plugin(manifest)
         {
-            public override Task ActivateAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-            public override async Task DeactivateAsync(CancellationToken cancellationToken = default)
+            protected override Task OnActivateAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+            protected override async Task OnDeactivateAsync(CancellationToken cancellationToken = default)
             {
                 owner.Stops++;
                 await onStop();

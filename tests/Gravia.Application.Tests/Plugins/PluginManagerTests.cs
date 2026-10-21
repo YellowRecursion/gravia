@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Gravia.Application.Plugins.DTOs;
 using Gravia.Application.Plugins.Interfaces;
 using Gravia.Application.Plugins.Services;
 using Gravia.Application.Tests.Projects;
@@ -15,7 +14,7 @@ public sealed class PluginManagerTests
     private static readonly string ProjectPath = Path.Combine(Path.GetTempPath(), "gravia-plugin-manager-tests");
 
     [Fact]
-    public async Task AddPersistsOnlyRelativePathAndEnabledAndDoesNotActivate()
+    public async Task AddPersistsOnlyRelativePathAndActivates()
     {
         var data = new MemoryDataStore();
         var factory = new Factory();
@@ -23,16 +22,14 @@ public sealed class PluginManagerTests
         await using var manager = Create(data, factory);
         await manager.InitializeAsync();
         await manager.AddAsync("plugins\\base/");
-        var plugin = Assert.Single(manager.Plugins);
+        var plugin = Assert.Single(manager.Controllers);
         Assert.Equal("plugins/base", plugin.Path);
-        Assert.False(plugin.Enabled);
         Assert.Equal("org.gravia.base", plugin.Manifest!.Id);
-        Assert.Empty(factory.Events);
+        Assert.Equal(["start:org.gravia.base"], factory.Events);
         using var json = JsonDocument.Parse((await data.ReadBytesAsync(PluginManager.FileName))!);
         var registration = Assert.Single(json.RootElement.EnumerateArray());
-        Assert.Equal(2, registration.EnumerateObject().Count());
+        Assert.Single(registration.EnumerateObject());
         Assert.Equal("plugins/base", registration.GetProperty("path").GetString());
-        Assert.False(registration.GetProperty("enabled").GetBoolean());
     }
 
     [Fact]
@@ -43,38 +40,36 @@ public sealed class PluginManagerTests
         var manager = Create(data, factory);
         await manager.InitializeAsync();
         Assert.Equal(["start:org.gravia.base", "start:org.gravia.consumer"], factory.Events);
-        Assert.All(manager.Plugins, item => Assert.True(item.IsActive));
+        Assert.All(manager.Controllers, item => Assert.True(item.Plugin?.IsLoaded == true));
         await manager.InitializeAsync();
         Assert.Equal(2, factory.Events.Count);
         await manager.DisposeAsync();
         await manager.DisposeAsync();
         Assert.Equal(["start:org.gravia.base", "start:org.gravia.consumer", "stop:org.gravia.consumer", "stop:org.gravia.base"], factory.Events);
-        Assert.All(manager.Plugins, item => Assert.False(item.IsActive));
+        Assert.All(manager.Controllers, item => Assert.False(item.Plugin?.IsLoaded == true));
         Assert.Equal(0, data.DisposeCount);
         await Assert.ThrowsAsync<ObjectDisposedException>(() => manager.AddAsync("plugins/other"));
-        // Closing does not overwrite the desired enabled flags.
-        Assert.All((await data.ReadAsync<PluginRegistration[]>(PluginManager.FileName))!, item => Assert.True(item.Enabled));
+        Assert.Equal(2, (await data.ReadAsync<PluginRegistration[]>(PluginManager.FileName))!.Length);
     }
 
     [Fact]
-    public async Task EnablingDependencyRecoversPreviouslyBlockedConsumer()
+    public async Task AddingDependencyRecoversBlockedConsumerAndRemovalRequiresDependentsFirst()
     {
-        var data = await DependencyProject(enabled: false);
+        var data = new MemoryDataStore();
+        await Manifest(data, "plugins/consumer", "org.gravia.consumer", dependency: "org.gravia.base");
+        await Manifest(data, "plugins/base", "org.gravia.base");
         var factory = new Factory();
         await using var manager = Create(data, factory);
         await manager.InitializeAsync();
-        await manager.SetEnabledAsync("plugins/consumer", true);
-        Assert.NotNull(manager.Plugins.Single(item => item.Path == "plugins/consumer").Error);
+        await manager.AddAsync("plugins/consumer");
         Assert.Empty(factory.Events);
-        await manager.SetEnabledAsync("plugins/base", true);
-        Assert.All(manager.Plugins, item => Assert.True(item.IsActive));
+        await manager.AddAsync("plugins/base");
+        Assert.All(manager.Controllers, item => Assert.True(item.Plugin?.IsLoaded == true));
         Assert.Equal(["start:org.gravia.base", "start:org.gravia.consumer"], factory.Events);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => manager.SetEnabledAsync("plugins/base", false));
         await Assert.ThrowsAsync<InvalidOperationException>(() => manager.RemoveAsync("plugins/base"));
-        await manager.SetEnabledAsync("plugins/consumer", false);
-        await manager.SetEnabledAsync("plugins/base", false);
+        await manager.RemoveAsync("plugins/consumer");
         await manager.RemoveAsync("plugins/base");
-        Assert.Single(manager.Plugins);
+        Assert.Empty(manager.Controllers);
     }
 
     [Theory]
@@ -87,8 +82,7 @@ public sealed class PluginManagerTests
         var factory = new Factory();
         await using var manager = Create(data, factory);
         await manager.InitializeAsync();
-        Assert.False(manager.Plugins[0].IsActive);
-        Assert.Contains("does not satisfy", manager.Plugins[0].Error);
+        Assert.False(manager.Controllers[0].Plugin?.IsLoaded == true);
         Assert.DoesNotContain("start:org.gravia.consumer", factory.Events);
     }
 
@@ -102,14 +96,14 @@ public sealed class PluginManagerTests
         await Manifest(data, "plugins/independent", "org.gravia.independent");
         await data.SaveAsync(PluginManager.FileName, new[]
         {
-            new PluginRegistration("plugins/first", true), new("plugins/second", true),
-            new("plugins/missing", true), new("plugins/independent", true)
+            new PluginRegistration("plugins/first"), new("plugins/second"),
+            new("plugins/missing"), new("plugins/independent")
         });
         var factory = new Factory();
         await using var manager = Create(data, factory);
         await manager.InitializeAsync();
-        Assert.All(manager.Plugins.Take(3), item => { Assert.False(item.IsActive); Assert.NotNull(item.Error); });
-        Assert.True(manager.Plugins[3].IsActive);
+        Assert.All(manager.Controllers.Take(3), item => { Assert.False(item.Plugin?.IsLoaded == true); });
+        Assert.True(manager.Controllers[3].Plugin?.IsLoaded == true);
         Assert.Equal(["start:org.gravia.independent"], factory.Events);
     }
 
@@ -122,30 +116,67 @@ public sealed class PluginManagerTests
         await using var manager = Create(data, factory);
         await manager.InitializeAsync();
         await manager.AddAsync("plugins/independent");
-        await manager.SetEnabledAsync("plugins/independent", true);
         factory.Events.Clear();
         await Manifest(data, "plugins/base", "org.gravia.base", "1.4.0");
         await manager.ReloadAsync("plugins/base");
         Assert.Equal(["stop:org.gravia.consumer", "stop:org.gravia.base", "start:org.gravia.base", "start:org.gravia.consumer"], factory.Events);
-        Assert.All(manager.Plugins, item => Assert.True(item.IsActive));
-        Assert.Equal("1.4.0", manager.Plugins.Single(item => item.Path == "plugins/base").Manifest!.Version);
+        Assert.All(manager.Controllers, item => Assert.True(item.Plugin?.IsLoaded == true));
+        Assert.Equal("1.4.0", manager.Controllers.Single(item => item.Path == "plugins/base").Manifest!.Version);
+    }
+
+    [Theory]
+    [InlineData("malformed")]
+    [InlineData("duplicate-id")]
+    [InlineData("changed-id")]
+    [InlineData("incompatible-version")]
+    [InlineData("missing-dependency")]
+    [InlineData("cycle")]
+    public async Task InvalidReloadPreservesRunningPluginsAndTheirManifests(string failure)
+    {
+        var data = await DependencyProject();
+        var factory = new Factory();
+        await using var manager = Create(data, factory);
+        await manager.InitializeAsync();
+        await Manifest(data, "plugins/independent", "org.gravia.independent");
+        await manager.AddAsync("plugins/independent");
+        var before = manager.Controllers.Select(item => (item.Plugin, item.Manifest)).ToArray();
+        factory.Events.Clear();
+        if (failure == "malformed")
+            await data.SaveBytesAsync("plugins/base/plugin.json", Encoding.UTF8.GetBytes("{ invalid json"));
+        else
+            await Manifest(data, "plugins/base",
+                failure == "duplicate-id" ? "org.gravia.independent" : failure == "changed-id" ? "org.gravia.renamed" : "org.gravia.base",
+                failure == "incompatible-version" ? "2.0.0" : "1.2.3",
+                failure == "missing-dependency" ? "org.gravia.absent" : failure == "cycle" ? "org.gravia.consumer" : null);
+
+        if (failure == "malformed")
+            await Assert.ThrowsAsync<JsonException>(() => manager.ReloadAsync("plugins/base"));
+        else
+            await Assert.ThrowsAsync<InvalidOperationException>(() => manager.ReloadAsync("plugins/base"));
+
+        Assert.Empty(factory.Events);
+        for (var i = 0; i < before.Length; i++)
+        {
+            Assert.Same(before[i].Plugin, manager.Controllers[i].Plugin);
+            Assert.Same(before[i].Manifest, manager.Controllers[i].Manifest);
+            Assert.True(manager.Controllers[i].Plugin!.IsLoaded);
+        }
     }
 
     [Fact]
     public async Task MissingManifestRemainsVisibleAndCanBeReloadedOrRemoved()
     {
         var data = new MemoryDataStore();
-        await data.SaveAsync(PluginManager.FileName, new[] { new PluginRegistration("plugins/base", true) });
+        await data.SaveAsync(PluginManager.FileName, new[] { new PluginRegistration("plugins/base") });
         var factory = new Factory();
         await using var manager = Create(data, factory);
         await manager.InitializeAsync();
-        Assert.Null(Assert.Single(manager.Plugins).Manifest);
-        Assert.NotNull(manager.Plugins[0].Error);
+        Assert.Null(Assert.Single(manager.Controllers).Manifest);
         await Manifest(data, "plugins/base", "org.gravia.base");
         await manager.ReloadAsync("plugins/base");
-        Assert.True(manager.Plugins[0].IsActive);
+        Assert.True(manager.Controllers[0].Plugin?.IsLoaded == true);
         await manager.RemoveAsync("plugins/base");
-        Assert.Empty(manager.Plugins);
+        Assert.Empty(manager.Controllers);
     }
 
     [Fact]
@@ -156,12 +187,10 @@ public sealed class PluginManagerTests
         await using var manager = Create(data, factory);
         await manager.InitializeAsync();
         Assert.Contains("stop:org.gravia.consumer", factory.Events);
-        Assert.False(manager.Plugins[0].IsActive);
-        Assert.NotNull(manager.Plugins[0].Error);
+        Assert.False(manager.Controllers[0].Plugin?.IsLoaded == true);
         factory.FailActivation = null;
-        await manager.SetEnabledAsync("plugins/consumer", true);
-        Assert.True(manager.Plugins[0].IsActive);
-        Assert.Null(manager.Plugins[0].Error);
+        await manager.ReloadAsync("plugins/consumer");
+        Assert.True(manager.Controllers[0].Plugin?.IsLoaded == true);
     }
 
     [Fact]
@@ -174,26 +203,69 @@ public sealed class PluginManagerTests
         factory.FailDeactivation = "org.gravia.consumer";
         await Assert.ThrowsAsync<AggregateException>(() => manager.DisposeAsync().AsTask());
         Assert.Contains("stop:org.gravia.base", factory.Events);
-        Assert.True(manager.Plugins[0].IsActive);
-        Assert.NotNull(manager.Plugins[0].Error);
+        Assert.False(Assert.IsAssignableFrom<Plugin>(manager.Controllers[0].Plugin).IsLoaded);
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => manager.ReloadAsync("plugins/consumer"));
+        factory.FailDeactivation = null;
+        factory.Events.Clear();
+        await manager.DisposeAsync();
+        await manager.DisposeAsync();
+        Assert.Equal(["stop:org.gravia.consumer"], factory.Events);
+        Assert.All(manager.Controllers, item => Assert.Null(item.Plugin));
     }
 
     [Fact]
-    public async Task SaveFailureDoesNotCommitAddedOrEnabledRegistration()
+    public async Task SaveFailureDoesNotCommitAddedOrRemovedRegistration()
+    {
+        var data = new MemoryDataStore();
+        await Manifest(data, "plugins/base", "org.gravia.base");
+        var factory = new Factory();
+        await using var manager = Create(data, factory);
+        await manager.InitializeAsync();
+        data.WriteFailure = new IOException("Disk unavailable.");
+        await Assert.ThrowsAsync<IOException>(() => manager.AddAsync("plugins/base"));
+        Assert.Empty(manager.Controllers);
+        data.WriteFailure = null;
+        await manager.AddAsync("plugins/base");
+        factory.Events.Clear();
+        var saved = await data.ReadBytesAsync(PluginManager.FileName);
+        data.WriteFailure = new IOException("Disk unavailable.");
+        await Assert.ThrowsAsync<IOException>(() => manager.RemoveAsync("plugins/base"));
+        Assert.Single(manager.Controllers);
+        Assert.True(manager.Controllers[0].Plugin?.IsLoaded == true);
+        Assert.Equal(saved, await data.ReadBytesAsync(PluginManager.FileName));
+        Assert.Equal(["stop:org.gravia.base", "start:org.gravia.base"], factory.Events);
+    }
+
+    [Fact]
+    public async Task CancelledRemovalRestoresActivationBeforePropagatingCancellation()
     {
         var data = new MemoryDataStore();
         await Manifest(data, "plugins/base", "org.gravia.base");
         await using var manager = Create(data, new Factory());
         await manager.InitializeAsync();
-        data.WriteFailure = new IOException("Disk unavailable.");
-        await Assert.ThrowsAsync<IOException>(() => manager.AddAsync("plugins/base"));
-        Assert.Empty(manager.Plugins);
-        data.WriteFailure = null;
+        await manager.AddAsync("plugins/base");
+        using var cancellation = new CancellationTokenSource();
+        data.BeforeSave = (_, _) => { cancellation.Cancel(); return Task.CompletedTask; };
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => manager.RemoveAsync("plugins/base", cancellation.Token));
+        Assert.True(Assert.Single(manager.Controllers).Plugin!.IsLoaded);
+    }
+
+    [Fact]
+    public async Task RemovalReportsBothSaveFailureAndFailedRestoration()
+    {
+        var data = new MemoryDataStore();
+        await Manifest(data, "plugins/base", "org.gravia.base");
+        var factory = new Factory();
+        await using var manager = Create(data, factory);
+        await manager.InitializeAsync();
         await manager.AddAsync("plugins/base");
         data.WriteFailure = new IOException("Disk unavailable.");
-        await Assert.ThrowsAsync<IOException>(() => manager.SetEnabledAsync("plugins/base", true));
-        Assert.False(manager.Plugins[0].Enabled);
-        Assert.False(manager.Plugins[0].IsActive);
+        factory.FailActivation = "org.gravia.base";
+        var error = await Assert.ThrowsAsync<AggregateException>(() => manager.RemoveAsync("plugins/base"));
+        Assert.Same(data.WriteFailure, error.InnerExceptions[0]);
+        Assert.Equal(2, error.InnerExceptions.Count);
+        Assert.False(Assert.Single(manager.Controllers).Plugin?.IsLoaded == true);
+        Assert.Single((await data.ReadAsync<PluginRegistration[]>(PluginManager.FileName))!);
     }
 
     [Fact]
@@ -239,22 +311,21 @@ public sealed class PluginManagerTests
         }
         await data.SaveAsync(PluginManager.FileName, new[]
         {
-            new PluginRegistration("plugins/first", true), new("plugins/second", true)
+            new PluginRegistration("plugins/first"), new("plugins/second")
         });
         var factory = new Factory();
         await using var restored = Create(data, factory);
         await restored.InitializeAsync();
-        Assert.All(restored.Plugins, item => Assert.NotNull(item.Error));
         Assert.Empty(factory.Events);
     }
 
     [Fact]
-    public async Task UnsupportedExecutionIsReportedWithoutPretendingThePluginIsActive()
+    public async Task UnsupportedExecutionDoesNotActivatePlugin()
     {
         var data = await DependencyProject();
         await using var manager = Create(data);
         await manager.InitializeAsync();
-        Assert.All(manager.Plugins, item => { Assert.False(item.IsActive); Assert.NotNull(item.Error); });
+        Assert.All(manager.Controllers, item => { Assert.False(item.Plugin?.IsLoaded == true); });
     }
 
     [Fact]
@@ -274,7 +345,7 @@ public sealed class PluginManagerTests
     {
         var data = new MemoryDataStore();
         await Manifest(data, "plugins/base", "org.gravia.base");
-        await data.SaveAsync(PluginManager.FileName, new[] { new PluginRegistration("plugins/base", true) });
+        await data.SaveAsync(PluginManager.FileName, new[] { new PluginRegistration("plugins/base") });
         var factory = new Factory { WaitDuringActivation = true };
         await using var manager = Create(data, factory);
         using var cancellation = new CancellationTokenSource();
@@ -283,44 +354,42 @@ public sealed class PluginManagerTests
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => initialize);
         Assert.Contains("stop:org.gravia.base", factory.Events);
-        Assert.False(manager.Plugins[0].IsActive);
+        Assert.False(manager.Controllers[0].Plugin?.IsLoaded == true);
         factory.WaitDuringActivation = false;
         await manager.InitializeAsync();
-        Assert.True(manager.Plugins[0].IsActive);
+        Assert.True(manager.Controllers[0].Plugin?.IsLoaded == true);
     }
 
     [Fact]
-    public async Task DisableWaitsForActivationAndStopsTheActivatedInstance()
+    public async Task RemoveWaitsForActivationAndStopsTheActivatedInstance()
     {
         var data = new MemoryDataStore();
         await Manifest(data, "plugins/base", "org.gravia.base");
         var factory = new Factory { WaitDuringActivation = true };
         await using var manager = Create(data, factory);
         await manager.InitializeAsync();
-        await manager.AddAsync("plugins/base");
-        var enabling = manager.SetEnabledAsync("plugins/base", true);
+        var adding = manager.AddAsync("plugins/base");
         await factory.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        var disabling = manager.SetEnabledAsync("plugins/base", false);
-        Assert.False(disabling.IsCompleted);
+        var removing = manager.RemoveAsync("plugins/base");
+        Assert.False(removing.IsCompleted);
         factory.Release.TrySetResult();
-        await enabling.WaitAsync(TimeSpan.FromSeconds(5));
-        await disabling.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.False(manager.Plugins[0].Enabled);
-        Assert.False(manager.Plugins[0].IsActive);
+        await adding.WaitAsync(TimeSpan.FromSeconds(5));
+        await removing.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Empty(manager.Controllers);
         Assert.Equal(["start:org.gravia.base", "stop:org.gravia.base"], factory.Events);
     }
 
     private static PluginManager Create(MemoryDataStore data, params IPluginFactory[] factories)
         => new(ProjectPath, data, NullLogger<PluginManager>.Instance, factories);
 
-    private static async Task<MemoryDataStore> DependencyProject(bool enabled = true)
+    private static async Task<MemoryDataStore> DependencyProject()
     {
         var data = new MemoryDataStore();
         await Manifest(data, "plugins/base", "org.gravia.base");
         await Manifest(data, "plugins/consumer", "org.gravia.consumer", dependency: "org.gravia.base");
         await data.SaveAsync(PluginManager.FileName, new[]
         {
-            new PluginRegistration("plugins/consumer", enabled), new("plugins/base", enabled)
+            new PluginRegistration("plugins/consumer"), new("plugins/base")
         });
         return data;
     }
@@ -349,8 +418,9 @@ public sealed class PluginManagerTests
 
         private sealed class Instance(PluginManifest manifest, Factory owner) : Plugin(manifest)
         {
-            public override async Task ActivateAsync(CancellationToken cancellationToken = default)
+            protected override async Task OnActivateAsync(CancellationToken cancellationToken = default)
             {
+                Assert.False(IsLoaded);
                 owner.Events.Add($"start:{Manifest.Id}");
                 if (owner.FailActivation == Manifest.Id) throw new InvalidOperationException("Activation failed.");
                 if (owner.WaitDuringActivation)
@@ -360,8 +430,9 @@ public sealed class PluginManagerTests
                 }
             }
 
-            public override Task DeactivateAsync(CancellationToken cancellationToken = default)
+            protected override Task OnDeactivateAsync(CancellationToken cancellationToken = default)
             {
+                Assert.False(IsLoaded);
                 owner.Events.Add($"stop:{Manifest.Id}");
                 if (owner.FailDeactivation == Manifest.Id) throw new IOException("Deactivation failed.");
                 return Task.CompletedTask;

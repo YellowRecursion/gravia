@@ -16,6 +16,7 @@
     <ProjectReference Include="../Gravia.Domain/Gravia.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Plugins\Models\" />
     <Folder Include="Settings\Commands\" />
     <Folder Include="Settings\Queries\" />
   </ItemGroup>
