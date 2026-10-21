@@ -1,3 +1,4 @@
+using Gravia.Application.Plugins.Services;
 using Gravia.Application.Settings.Services;
 using Gravia.Application.Projects.Events;
 using Gravia.Application.Storage;
@@ -19,8 +20,14 @@ public sealed class ProjectSession : IAsyncDisposable
     public IDataStore DataStore { get; }
     public KeyValueStore KeyValueStore { get; }
     public ProjectSettings Settings { get; }
+    public PluginManager PluginManager { get; }
 
-    public ProjectSession(string projectPath, IDataStore dataStore, ProjectSettings settings, KeyValueStore keyValueStore)
+    public ProjectSession(
+        string projectPath,
+        IDataStore dataStore,
+        ProjectSettings settings,
+        KeyValueStore keyValueStore,
+        PluginManager pluginManager)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
         if (!Path.IsPathFullyQualified(projectPath))
@@ -29,6 +36,7 @@ public sealed class ProjectSession : IAsyncDisposable
         DataStore = dataStore ?? throw new ArgumentNullException(nameof(dataStore));
         KeyValueStore = keyValueStore ?? throw new ArgumentNullException(nameof(keyValueStore));
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        PluginManager = pluginManager ?? throw new ArgumentNullException(nameof(pluginManager));
     }
 
     internal static void SetCurrent(ProjectSession? session)
@@ -49,7 +57,7 @@ public sealed class ProjectSession : IAsyncDisposable
             new CurrentProjectChanged().Raise();
         List<Exception> errors = [];
         // Dependants finish before their shared store is released. Attempt every cleanup.
-        foreach (var resource in new object[] { Settings, KeyValueStore, DataStore })
+        foreach (var resource in new object[] { PluginManager, Settings, KeyValueStore, DataStore })
         {
             try
             {

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Gravia.Application.Plugins.Services;
 using Gravia.Application.Projects.Services;
 using Gravia.Application.Settings.EventHandlers;
 using Gravia.Application.Settings.Services;
@@ -97,8 +98,11 @@ public sealed class ProjectSessionTests
     }
 
     private static ProjectSession Create(string name, MemoryDataStore data)
-        => new(Path.Combine(Path.GetTempPath(), name), data,
-            new ProjectSettings(data, NullLogger<ProjectSettings>.Instance), new KeyValueStore(data));
+    {
+        var path = Path.Combine(Path.GetTempPath(), name);
+        return new(path, data, new ProjectSettings(data, NullLogger<ProjectSettings>.Instance), new KeyValueStore(data),
+            new PluginManager(path, data, NullLogger<PluginManager>.Instance));
+    }
 
     private static IntSetting Number()
         => new("example.count", new LocalizedText("en", "Count"), 1, SettingsUiPaths.Appearance);

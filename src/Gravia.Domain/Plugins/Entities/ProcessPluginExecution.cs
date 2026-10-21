@@ -1,19 +1,23 @@
+using System.Text.Json.Serialization;
+
 namespace Gravia.Domain.Plugins.Entities;
 
 /// <summary>Describes a process launch. Relative paths are resolved from the plugin folder.</summary>
 public sealed class ProcessPluginExecution : PluginExecution
 {
-    private string _command = null!;
+    private string? _command;
     private string[] _arguments = [];
 
-    /// <summary>An executable path or command name; not a shell command line.</summary>
+    /// <summary>An executable path or command name. When absent, the process is started manually.</summary>
     /// <example>runtime/python.exe — relative to the folder containing plugin.json.</example>
-    public required string Command
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Command
     {
         get => _command;
         init
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(value, nameof(Command));
+            if (value is not null)
+                ArgumentException.ThrowIfNullOrWhiteSpace(value, nameof(Command));
             _command = value;
         }
     }

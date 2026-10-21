@@ -1,5 +1,7 @@
 using FluentValidation;
 using FluentValidation.Results;
+using Gravia.Application.Plugins.Services;
+using Gravia.Application.Plugins.Interfaces;
 using Gravia.Application.Projects.Interfaces;
 using Gravia.Application.Projects.Services;
 using Gravia.Application.Settings.Services;
@@ -10,7 +12,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Gravia.Infrastructure.Projects;
 
-public sealed class ProjectSessionFactory(ILoggerFactory loggerFactory) : IProjectSessionFactory
+public sealed class ProjectSessionFactory(ILoggerFactory loggerFactory,
+    IEnumerable<IPluginFactory>? pluginFactories = null) : IProjectSessionFactory
 {
     public async Task<ProjectSession> CreateAsync(string parentDirectory, string name, CancellationToken cancellationToken = default)
     {
@@ -45,19 +48,27 @@ public sealed class ProjectSessionFactory(ILoggerFactory loggerFactory) : IProje
 
         var storage = new FileDataStore(path);
         ProjectSettings? settings = null;
-        KeyValueStore? values = null;
+        KeyValueStore? keyValues = null;
+        PluginManager? pluginManager = null;
         try
         {
             // Apply the store's path guards now, including its junction/symlink policy.
             _ = await storage.ExistsAsync(SettingsStorage.FileName, cancellationToken);
             settings = new ProjectSettings(storage, loggerFactory.CreateLogger<ProjectSettings>());
-            values = new KeyValueStore(storage);
-            return new ProjectSession(path, storage, settings, values);
+            keyValues = new KeyValueStore(storage);
+            pluginManager = new PluginManager(path, storage, loggerFactory.CreateLogger<PluginManager>(), pluginFactories);
+            await pluginManager.InitializeAsync(cancellationToken);
+            return new ProjectSession(path, storage, settings, keyValues, pluginManager);
         }
         catch
         {
+            if (pluginManager is not null)
+            {
+                try { await pluginManager.DisposeAsync(); }
+                catch (Exception cleanup) { loggerFactory.CreateLogger<ProjectSessionFactory>().LogError(cleanup, "Failed to release plugins after opening a project failed."); }
+            }
             settings?.Dispose();
-            values?.Dispose();
+            keyValues?.Dispose();
             storage.Dispose();
             throw;
         }

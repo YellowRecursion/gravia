@@ -316,7 +316,9 @@ public sealed class ProjectServiceTests : IAsyncLifetime
             if (Failure is not null) throw Failure;
             var data = new MemoryDataStore();
             var session = new ProjectSession(projectPath, data,
-                new ProjectSettings(data, NullLogger<ProjectSettings>.Instance), new KeyValueStore(data));
+                new ProjectSettings(data, NullLogger<ProjectSettings>.Instance), new KeyValueStore(data),
+                new Gravia.Application.Plugins.Services.PluginManager(projectPath, data,
+                    NullLogger<Gravia.Application.Plugins.Services.PluginManager>.Instance));
             Created.Add(session);
             return session;
         }

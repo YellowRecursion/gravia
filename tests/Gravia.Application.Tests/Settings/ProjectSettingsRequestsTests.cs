@@ -173,7 +173,9 @@ public sealed class ProjectSettingsRequestsTests : IAsyncLifetime
             if (BeforeOpen is not null) await BeforeOpen();
             var data = new MemoryDataStore();
             return new ProjectSession(projectPath, data,
-                new ProjectSettings(data, NullLogger<ProjectSettings>.Instance), new KeyValueStore(data));
+                new ProjectSettings(data, NullLogger<ProjectSettings>.Instance), new KeyValueStore(data),
+                new Gravia.Application.Plugins.Services.PluginManager(projectPath, data,
+                    NullLogger<Gravia.Application.Plugins.Services.PluginManager>.Instance));
         }
     }
 }
