@@ -1,9 +1,12 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 using Gravia.Domain.Localization.Consts;
+using Gravia.Domain.Localization.Serialization;
 
 namespace Gravia.Domain.Localization.Entities;
 
 /// <summary>An immutable text with translations and a required default language.</summary>
+[JsonConverter(typeof(LocalizedTextJsonConverter))]
 public sealed class LocalizedText
 {
     private readonly ImmutableDictionary<string, string> _translations;
